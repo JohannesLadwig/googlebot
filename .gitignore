@@ -1,2 +1,6 @@
 Data
 __pycache__
+.idea
+geckodriver.log
+proxy_connect.py
+SingleScraper_selenium.py
