@@ -2,5 +2,5 @@ Data
 __pycache__
 .idea
 geckodriver.log
-proxy_connect.py
-SingleScraper_selenium.py
+Code/proxy_connect.py
+Code/SingleScraper_selenium.py

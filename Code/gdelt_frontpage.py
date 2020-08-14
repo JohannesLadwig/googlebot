@@ -6,9 +6,8 @@ import collections
 import dateutil.parser as parser
 from nltk.corpus import stopwords
 
-
-import Utilities
-from gdelt_url_country import get_country_media
+from Code import Utilities
+from Code.gdelt_url_country import get_country_media
 
 URL = GDEL_GFG_URL = "http://data.gdeltproject.org/gdeltv3/gfg/alpha/lastupdate.txt"
 

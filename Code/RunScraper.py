@@ -1,4 +1,4 @@
-from SingleScraper import SingleScraper
+from Code.SingleScraper import SingleScraper
 import pandas as pd
 from datetime import date
 

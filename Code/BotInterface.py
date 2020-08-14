@@ -3,7 +3,7 @@ import math
 import numpy as np
 import time
 import random
-import Utilities as Util
+from Code import Utilities as Util
 
 
 class BotInterface:

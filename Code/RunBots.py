@@ -1,10 +1,8 @@
-from Swarm import Swarm
+from Code.Swarm import Swarm
 import multiprocessing as mp
-import Utilities as Util
 import time
-import GenerateSearchTerms as Gen
-import RunScraper as Scrape
-import gdelt_gkg as gkg
+from Code import gdelt_gkg as gkg, Utilities as Util, \
+    GenerateSearchTerms as Gen, RunScraper as Scrape
 import json
 from functools import partial
 

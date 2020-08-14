@@ -1,4 +1,4 @@
-from SingleBot import SingleBot
+from Code.SingleBot import SingleBot
 import time
 import os
 import random

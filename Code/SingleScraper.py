@@ -1,7 +1,7 @@
 from datetime import date
 import pandas as pd
 import os
-from Utilities import *
+from Code.Utilities import *
 import requests
 from bs4 import BeautifulSoup
 

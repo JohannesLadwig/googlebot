@@ -1,12 +1,10 @@
-import requests
-from bs4 import BeautifulSoup
 import pandas as pd
 import collections
 import difflib
 import json
 import os
 
-from gdelt_url_country import get_country_media
+from Code.gdelt_url_country import get_country_media
 
 IN_COUNTRY_MEDIA = ['Data/diverse/', '_urls.json']
 
