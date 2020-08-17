@@ -4,7 +4,7 @@ import os
 import random
 import json
 from datetime import datetime
-
+from Code.DockerContainer import DockerContainer
 
 class Swarm:
     COL_NAMES = ('term_params', 'rank', 'domain', 'title', 'text')
@@ -19,6 +19,7 @@ class Swarm:
                  nr_searches_exp,
                  path_terms_experiment,
                  swarm_name,
+                 proxy={},
                  nr_results=1,
                  delay_min=10,
                  night_search=False,
@@ -60,6 +61,8 @@ class Swarm:
         self.path_terms_experiment = path_terms_experiment
 
         self.swarm_name = swarm_name
+
+        self.proxy = proxy
 
         self.dir_cookie_jar = dir_cookie_jar
         self.dir_results = dir_results
@@ -254,6 +257,20 @@ class Swarm:
             raise ValueError(f'{number} should be an integer > 0')
 
     @property
+    def proxy(self):
+        return self._proxy
+
+    @proxy.setter
+    def proxy(self, proxy_dict):
+        self._proxy = {'domain': None, 'username': None, 'password': None}
+        if 'domain' in proxy_dict:
+            self._proxy['domain'] = proxy_dict['domain']
+            if 'username' in proxy_dict:
+                self._proxy['username'] = proxy_dict['username']
+                if 'password' in proxy_dict:
+                    self._proxy['password'] = proxy_dict['password']
+
+    @property
     def benign_terms(self):
         return self._benign_terms
 
@@ -327,6 +344,9 @@ class Swarm:
             del log_file
 
     def launch(self, exist):
+        if not self.visual:
+            DockerContainer(self.port, 'container_' + self.swarm_name, self.proxy['domain'], self.proxy['username'], self.proxy['password'])
+            time.sleep(10)
         for i in range(self.nr_inst):
             bot_id = f'{self.swarm_name}{i}'
             instance = SingleBot(self.port,
@@ -410,7 +430,7 @@ class Swarm:
             if not completed:
                 print('Creation searches could no longer be conducted')
                 break
-            self.nr_searches_creation -=1
+            self.nr_searches_creation -= 1
             self.log['nr_create'] = self.log['nr_create'] + 1
             self.handle_log('w')
             office_hours = self.time_handler(time_elapsed)

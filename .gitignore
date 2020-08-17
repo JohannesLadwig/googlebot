@@ -4,3 +4,4 @@ __pycache__
 geckodriver.log
 Code/proxy_connect.py
 Code/SingleScraper_selenium.py
+Data/proxy_data/proxy_data.json

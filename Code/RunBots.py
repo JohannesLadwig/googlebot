@@ -7,7 +7,7 @@ import json
 from functools import partial
 
 
-def declare_swarms(inst, t, night):
+def declare_swarms(inst, t, night,proxy):
     a = Swarm(port=4444,
               nr_inst=inst,
               flag='left',
@@ -17,6 +17,7 @@ def declare_swarms(inst, t, night):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='a',
+              proxy=proxy,
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -32,6 +33,7 @@ def declare_swarms(inst, t, night):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='b',
+              proxy=proxy,
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -47,6 +49,7 @@ def declare_swarms(inst, t, night):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='c',
+              proxy=proxy,
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -62,6 +65,7 @@ def declare_swarms(inst, t, night):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='d',
+              proxy=proxy,
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -77,6 +81,7 @@ def declare_swarms(inst, t, night):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='e',
+              proxy=proxy,
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -172,13 +177,10 @@ if __name__ == "__main__":
     night_search = Util.speech_bool(input('Conduct searches at night (y/n): '))
     restart = Util.speech_bool(
         input('Are you restarting a crashed experiment session? (y/n): '))
-    if not Util.speech_bool(
-            input(
-                'Please confirm whether all dockers are running! ports(4444-4448) (y/n): ')):
-        # docker run -p 4445:4444 -d --shm-size=2g  --name bot_2 selenium/standalone-firefox
-        quit()
+    with open('Data/proxy_data/proxy_data.json', 'r') as raw_proxy_data:
+        proxy_data = json.load(raw_proxy_data)
 
-    swarm_list = declare_swarms(nr_inst, delay, night_search)
+    swarm_list = declare_swarms(nr_inst, delay, night_search, proxy_data)
     swarm_a, swarm_b, swarm_c, swarm_d, swarm_e = swarm_list
 
     keep_cookie = Util.speech_bool(

@@ -253,8 +253,9 @@ class BotInterface:
         v = 0
         while np.sign(y_goal - self.y_scroll_loc) == direction:
             y_next = self.y_scroll_loc + int(v)
-            self.driver.execute_script(f'window.scrollTo(0,{y_next});'
-                                       f'return window.pageYOffset;')
+            self.driver.execute_script(f'window.scrollTo(0,{y_next})')
+            self.y_scroll_loc = self.driver.execute_script(
+                'return window.pageYOffset;')
             if t0 > 0:
                 v += a0
                 t0 -= 1
@@ -264,6 +265,7 @@ class BotInterface:
                     break
             time.sleep(0.02)
         return self.y_scroll_loc
+
 
     def set_cursor_loc(self):
         """

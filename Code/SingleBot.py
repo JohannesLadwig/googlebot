@@ -6,6 +6,7 @@ from Code import Utilities as Util, BotInterface as BI
 import json
 import random
 from selenium import webdriver
+# import seleniumwire
 import selenium.common.exceptions as sel_exc
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
@@ -262,12 +263,14 @@ class SingleBot:
             Does not load existing cookies! only use when cookies
              are to be re-set
         """
+
         if self.visual:
             self.driver = webdriver.Firefox()
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
-                DesiredCapabilities.FIREFOX)
+                DesiredCapabilities.FIREFOX,
+            )
         self.interface = BI.BotInterface(self.driver)
         self.interface.set_cursor_loc()
         self.driver.get("https://www.google.com/")
@@ -284,6 +287,9 @@ class SingleBot:
         accesses webdriver, acceses dead google page and loads cookies from jar.
         """
         if self.visual:
+            # PROXY = "USERNAME:<PASSWORD.@us-1m.geosurf.io:8000"
+            # options = {'proxy': {'http': 'http://' + PROXY,'https':'https://' + PROXY}}
+            # driver = seleniumwire.webdriver.Firefox(seleniumwire_options=options)
             self.driver = webdriver.Firefox()
         else:
             self.driver = webdriver.Remote(
