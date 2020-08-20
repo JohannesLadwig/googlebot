@@ -1,4 +1,7 @@
-Data
+Data/cookies
+Data/log_files
+Data/results
+Data/terms
 __pycache__
 .idea
 geckodriver.log

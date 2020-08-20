@@ -4,7 +4,9 @@ import os
 import random
 import json
 from datetime import datetime
-from Code.DockerContainer import DockerContainer
+from Code.SeleniumDocker import SeleniumDocker
+from Code.ProxyDocker import ProxyDocker
+
 
 class Swarm:
     COL_NAMES = ('term_params', 'rank', 'domain', 'title', 'text')
@@ -20,6 +22,7 @@ class Swarm:
                  path_terms_experiment,
                  swarm_name,
                  proxy={},
+                 timezone='US/Central',
                  nr_results=1,
                  delay_min=10,
                  night_search=False,
@@ -63,7 +66,7 @@ class Swarm:
         self.swarm_name = swarm_name
 
         self.proxy = proxy
-
+        self.timezone = timezone
         self.dir_cookie_jar = dir_cookie_jar
         self.dir_results = dir_results
 
@@ -262,13 +265,29 @@ class Swarm:
 
     @proxy.setter
     def proxy(self, proxy_dict):
-        self._proxy = {'domain': None, 'username': None, 'password': None}
+        self._proxy = {'domain': None, 'username': None, 'password': None, 'port': None}
         if 'domain' in proxy_dict:
             self._proxy['domain'] = proxy_dict['domain']
             if 'username' in proxy_dict:
                 self._proxy['username'] = proxy_dict['username']
                 if 'password' in proxy_dict:
                     self._proxy['password'] = proxy_dict['password']
+            if 'port' in proxy_dict:
+                self._proxy['port'] = proxy_dict['port']
+
+    @property
+    def timezone(self):
+        return self._timezone
+
+    @timezone.setter
+    def timezone(self, zone_name):
+        with open('Data/diverse/timezones.json', 'r') as tz_file:
+            valid_tz = json.load(tz_file)
+        if zone_name not in valid_tz:
+            raise ValueError(
+                f'{self.zone_name} is not a valid timezone. See Data/diverse/timezones.json')
+        else:
+            self._timezone = zone_name
 
     @property
     def benign_terms(self):
@@ -343,10 +362,32 @@ class Swarm:
                 json.dump(self.log, log_file)
             del log_file
 
+    def launch_proxy(self):
+        selenium_proxy = None
+        if self.proxy['domain'] is not None:
+            if self.proxy['port'] is not None:
+                ProxyDocker(f'proxy_{self.swarm_name}',
+                            self.proxy['domain'],
+                            self.proxy['username'],
+                            self.proxy['password'],
+                            self.proxy['port'])
+                if self.visual:
+                    selenium_proxy = f'localhost:{self.proxy["port"]}'
+                else:
+                    selenium_proxy = f'172.17.0.1:{self.proxy["port"]}'
+            else:
+                selenium_proxy = self.proxy['domain']
+        print(selenium_proxy)
+        return selenium_proxy
+
     def launch(self, exist):
+        selenium_proxy = self.launch_proxy()
         if not self.visual:
-            DockerContainer(self.port, 'container_' + self.swarm_name, self.proxy['domain'], self.proxy['username'], self.proxy['password'])
-            time.sleep(10)
+            container = SeleniumDocker(self.port,
+                                       'container_' + self.swarm_name,
+                                       self.timezone)
+            print(container)
+            time.sleep(5)
         for i in range(self.nr_inst):
             bot_id = f'{self.swarm_name}{i}'
             instance = SingleBot(self.port,
@@ -354,7 +395,8 @@ class Swarm:
                                  bot_id=bot_id,
                                  nr_results=self.nr_results,
                                  visual=self.visual,
-                                 existing=exist)
+                                 existing=exist,
+                                 proxy=selenium_proxy)
             self.instances[bot_id] = instance
             self.log['create'][bot_id] = self.log['create'].get(bot_id, 0)
             self.log['exp'][bot_id] = self.log['exp'].get(bot_id, 0)

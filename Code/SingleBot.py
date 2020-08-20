@@ -33,7 +33,9 @@ class SingleBot:
                  dir_results='Data/results/',
                  nr_results=1,
                  visual=False,
-                 existing=False
+                 existing=False,
+                 proxy=None,
+                 accept_cookie=False
                  ):
         """
         :param port: string, access selenium docker image
@@ -59,7 +61,7 @@ class SingleBot:
         self.dir_results = dir_results
         self.nr_results = nr_results
         self.visual = visual
-
+        self._proxy = proxy
         # initialize empty results Dataframe with desired columns
         self.existing_results = pd.DataFrame(columns=SingleBot.COL_NAMES)
         # initialize empty driver options
@@ -70,12 +72,24 @@ class SingleBot:
         # initialize path to bot specific cookie jar from jar directory
         self.cookie_jar = self.dir_cookie_jar + self.bot_id + '.json'
 
+        # set desired capabilitiies
+        print(self._proxy)
+        self._firefox_capabilities = DesiredCapabilities.FIREFOX
+        if self._proxy is not None:
+            self._firefox_capabilities['proxy'] = {
+                "proxyType": "MANUAL",
+                "httpProxy": self._proxy,
+                "ftpProxy": self._proxy,
+                "sslProxy": self._proxy,
+                }
+
+
         # initialize path to bot specific results file from results directory
         self.path_results = self.dir_results + self.bot_id + '.csv'
         self._IP = SingleBot.IP
         # If old cookies and results are not to be reused, run create.
         if not existing:
-            self.create()
+            self.create(accept_cookie)
 
     def __str__(self):
         return f'BotID: {self.bot_id}, {self.flag}'
@@ -256,7 +270,7 @@ class SingleBot:
         accept_button_path = '/html/body/div/c-wiz/div[2]/div/div/div/div/div[5]/div/form/div/span'
         self.interface.move_and_click(accept_button_path)
 
-    def create(self):
+    def create(self, accept_cookie):
         """
             set and launch blank driver and access google.
             Accepts cookie preferences.
@@ -265,16 +279,17 @@ class SingleBot:
         """
 
         if self.visual:
-            self.driver = webdriver.Firefox()
+            self.driver = webdriver.Firefox(desired_capabilities=self._firefox_capabilities)
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
-                DesiredCapabilities.FIREFOX,
+                desired_capabilities=self._firefox_capabilities,
             )
         self.interface = BI.BotInterface(self.driver)
         self.interface.set_cursor_loc()
         self.driver.get("https://www.google.com/")
-        # self.accept_cookies()
+        if accept_cookie:
+            self.accept_cookies()
         time.sleep(2)
         self.shutdown()
 
@@ -287,14 +302,11 @@ class SingleBot:
         accesses webdriver, acceses dead google page and loads cookies from jar.
         """
         if self.visual:
-            # PROXY = "USERNAME:<PASSWORD.@us-1m.geosurf.io:8000"
-            # options = {'proxy': {'http': 'http://' + PROXY,'https':'https://' + PROXY}}
-            # driver = seleniumwire.webdriver.Firefox(seleniumwire_options=options)
-            self.driver = webdriver.Firefox()
+            self.driver = webdriver.Firefox(desired_capabilities=self._firefox_capabilities)
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
-                DesiredCapabilities.FIREFOX)
+                desired_capabilities=self._firefox_capabilities)
 
         if issue := self.connection_handler("https://www.google.com/grlf") is None:
             time.sleep(2)

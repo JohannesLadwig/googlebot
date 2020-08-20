@@ -7,7 +7,7 @@ import json
 from functools import partial
 
 
-def declare_swarms(inst, t, night,proxy):
+def declare_swarms(inst, t, night, proxy):
     a = Swarm(port=4444,
               nr_inst=inst,
               flag='left',
@@ -17,7 +17,8 @@ def declare_swarms(inst, t, night,proxy):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='a',
-              proxy=proxy,
+              proxy=proxy['swarm_a'],
+              timezone=proxy['swarm_a']['TZ'],
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -33,7 +34,8 @@ def declare_swarms(inst, t, night,proxy):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='b',
-              proxy=proxy,
+              proxy=proxy['swarm_b'],
+              timezone=proxy['swarm_b']['TZ'],
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -49,7 +51,8 @@ def declare_swarms(inst, t, night,proxy):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='c',
-              proxy=proxy,
+              proxy=proxy['swarm_c'],
+              timezone=proxy['swarm_c']['TZ'],
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -65,7 +68,8 @@ def declare_swarms(inst, t, night,proxy):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='d',
-              proxy=proxy,
+              proxy=proxy['swarm_d'],
+              timezone=proxy['swarm_d']['TZ'],
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -81,7 +85,8 @@ def declare_swarms(inst, t, night,proxy):
               nr_searches_exp=0,
               path_terms_experiment="Data/terms/exp_terms.json",
               swarm_name='e',
-              proxy=proxy,
+              proxy=proxy['swarm_e'],
+              timezone=proxy['swarm_e']['TZ'],
               nr_results=1,
               delay_min=t,
               night_search=night,
@@ -129,7 +134,7 @@ def execute(swarm, create=False):
     return swarm
 
 
-def visual(nr_vis, t_delay, nr_searches, nr_experiment):
+def visual(nr_vis, t_delay, nr_searches, nr_experiment, proxy):
     bernd = Swarm(port=4444,
                   nr_inst=nr_vis,
                   flag='right',
@@ -139,6 +144,8 @@ def visual(nr_vis, t_delay, nr_searches, nr_experiment):
                   nr_searches_exp=nr_experiment,
                   path_terms_experiment="Data/terms/exp_terms.json",
                   swarm_name='bernd',
+                  proxy=proxy['bernd'],
+                  timezone=proxy['bernd']['TZ'],
                   nr_results=3,
                   delay_min=t_delay,
                   night_search=True,
@@ -166,19 +173,21 @@ if __name__ == "__main__":
 
     delay = int(input('Delay between searches: '))
 
+    print('Please make sure you have set proxy data at Data/proxy_data/proxy_data.json')
+    with open('Data/proxy_data/proxy_data.json', 'r') as raw_proxy_data:
+        proxy_data = json.load(raw_proxy_data)
+
     if run_visualization:
         nr_creation = int(
             input('Please input the desired nr. of creation searches: '))
         nr_exp = int(
             input('Please input the desired nr. of experimental searches: '))
-        visual(nr_inst, delay, nr_creation, nr_exp)
+        visual(nr_inst, delay, nr_creation, nr_exp, proxy_data)
         quit()
 
     night_search = Util.speech_bool(input('Conduct searches at night (y/n): '))
     restart = Util.speech_bool(
         input('Are you restarting a crashed experiment session? (y/n): '))
-    with open('Data/proxy_data/proxy_data.json', 'r') as raw_proxy_data:
-        proxy_data = json.load(raw_proxy_data)
 
     swarm_list = declare_swarms(nr_inst, delay, night_search, proxy_data)
     swarm_a, swarm_b, swarm_c, swarm_d, swarm_e = swarm_list
