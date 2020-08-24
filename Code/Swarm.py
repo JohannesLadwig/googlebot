@@ -22,7 +22,7 @@ class Swarm:
                  path_terms_experiment,
                  swarm_name,
                  proxy={},
-                 timezone='US/Central',
+                 timezone='UTC',
                  nr_results=1,
                  delay_min=10,
                  night_search=False,
@@ -363,6 +363,7 @@ class Swarm:
             del log_file
 
     def launch_proxy(self):
+
         selenium_proxy = None
         if self.proxy['domain'] is not None:
             if self.proxy['port'] is not None:
@@ -386,7 +387,6 @@ class Swarm:
             container = SeleniumDocker(self.port,
                                        'container_' + self.swarm_name,
                                        self.timezone)
-            print(container)
             time.sleep(5)
         for i in range(self.nr_inst):
             bot_id = f'{self.swarm_name}{i}'

@@ -4,7 +4,7 @@ import json
 
 class SeleniumDocker:
     # docker run -p 4445:4444 -d --shm-size=2g  --name bot_2 selenium/standalone-firefox
-    def __init__(self, port, name, timezone='US/Pacific', proxy_domain=None,
+    def __init__(self, port, name, timezone='UTC', proxy_domain=None,
                  proxy_user=None,
                  proxy_password=None, memory='2g',
                  image='selenium/standalone-firefox'):

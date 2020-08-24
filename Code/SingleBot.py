@@ -73,7 +73,6 @@ class SingleBot:
         self.cookie_jar = self.dir_cookie_jar + self.bot_id + '.json'
 
         # set desired capabilitiies
-        print(self._proxy)
         self._firefox_capabilities = DesiredCapabilities.FIREFOX
         if self._proxy is not None:
             self._firefox_capabilities['proxy'] = {
@@ -285,6 +284,7 @@ class SingleBot:
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities,
             )
+        self.driver.implicitly_wait(30)
         self.interface = BI.BotInterface(self.driver)
         self.interface.set_cursor_loc()
         self.driver.get("https://www.google.com/")

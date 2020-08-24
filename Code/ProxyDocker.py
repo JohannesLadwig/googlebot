@@ -24,4 +24,5 @@ class ProxyDocker:
     def set_options(self):
         mode = f"--set mode=\"upstream:https://{self._proxy_host_port}\""
         authentication = f" --set upstream_auth=\"{self._proxy_user}:{self._proxy_password}\""
-        return mode + authentication
+        port = f" --set listen_port=\"{self._port}\""
+        return mode + authentication + port
