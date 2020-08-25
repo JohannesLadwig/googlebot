@@ -1,0 +1,44 @@
+{"swarm_a":{
+  "domain": "<HOST/IP>:<PORT>/",
+  "username":"<USERNAME>" ,
+  "password":"<PASSWORD>",
+  "port": 8082,
+  "TZ": "US/Central"
+},
+  "swarm_b":{
+  "domain": "<HOST/IP>:<PORT>/",
+  "username":"<USERNAME>" ,
+  "password":"<PASSWORD>",
+  "port": 8084,
+  "TZ": "US/Central"
+},
+  "swarm_c":{
+  "domain": "<HOST/IP>:<PORT>/",
+  "username":"<USERNAME>" ,
+  "password":"<PASSWORD>",
+  "port": 8086,
+  "TZ": "US/Central"
+},
+  "swarm_d":{
+  "domain": "<HOST/IP>:<PORT>/",
+  "username":"<USERNAME>" ,
+  "password":"<PASSWORD>",
+  "port": 8088,
+  "TZ": "US/Central"
+},
+  "swarm_e":{
+  "domain": "<HOST/IP>:<PORT>/",
+  "username":"<USERNAME>" ,
+  "password":"<PASSWORD>",
+  "port": 8090,
+  "TZ": "US/Central"
+},
+  "bernd":{
+  "domain": "<HOST/IP>:<PORT>/",
+  "username":"<USERNAME>" ,
+  "password":"<PASSWORD>",
+  "port": 8080,
+  "TZ": "US/Central"
+}
+}
+
