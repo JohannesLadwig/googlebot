@@ -5,6 +5,8 @@ import json
 import math
 import tldextract
 import scipy.interpolate as si
+from datetime import datetime
+import pytz
 
 TITLE_LOC = {'Breitbart': 0, 'Slate': 0, 'AlterNet': 0, 'TheBlaze': 0}
 
@@ -152,3 +154,7 @@ def calc_spline(t, ipl_t, nodes):
     points = si.splev(ipl_t, spline_list)
     return points
 
+
+def get_time(TZ):
+    current_time = datetime.now(pytz.timezone(TZ)).hour
+    return current_time

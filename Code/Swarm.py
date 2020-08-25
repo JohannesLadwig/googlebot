@@ -3,10 +3,10 @@ import time
 import os
 import random
 import json
-from datetime import datetime
 from Code.SeleniumDocker import SeleniumDocker
 from Code.ProxyDocker import ProxyDocker
-
+from datetime import datetime
+import Code.Utilities as Util
 
 class Swarm:
     COL_NAMES = ('term_params', 'rank', 'domain', 'title', 'text')
@@ -403,7 +403,7 @@ class Swarm:
 
     def time_handler(self, t_elapsed):
         office_hour = True
-        if not (7 <= time.localtime()[3] < 22):
+        if not (7 <= Util.get_time(self.timezone) < 22):
             office_hour = False
         elif (wait := (60 * self.delay_min - t_elapsed + (
                 t_elapsed / self.nr_inst))) > 0:

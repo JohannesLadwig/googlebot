@@ -80,6 +80,7 @@ class SingleBot:
                 "httpProxy": self._proxy,
                 "ftpProxy": self._proxy,
                 "sslProxy": self._proxy,
+                "noProxy": ["https://this-page-intentionally-left-blank.org"]
                 }
 
 

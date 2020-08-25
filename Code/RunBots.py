@@ -5,6 +5,8 @@ from Code import gdelt_gkg as gkg, Utilities as Util, \
     GenerateSearchTerms as Gen, RunScraper as Scrape
 import json
 from functools import partial
+from datetime import datetime
+import pytz
 
 
 def declare_swarms(inst, t, night, proxy):
@@ -124,6 +126,8 @@ def set_search_param(process, all_bots):
             individual.nr_results = nr_res
 
 
+
+
 def execute(swarm, create=False):
     swarm.wake()
 
@@ -173,10 +177,11 @@ if __name__ == "__main__":
 
     delay = int(input('Delay between searches: '))
 
-    print('Please make sure you have set proxy data at Data/proxy_data/proxy_data.json')
+    print(
+        'Please make sure you have set proxy data at Data/proxy_data/proxy_data.json')
     with open('Data/proxy_data/proxy_data.json', 'r') as raw_proxy_data:
         proxy_data = json.load(raw_proxy_data)
-
+    timezone = proxy_data['main']['TZ']
     if run_visualization:
         nr_creation = int(
             input('Please input the desired nr. of creation searches: '))
@@ -220,12 +225,12 @@ if __name__ == "__main__":
             while searches_remaining(instruction, swarm_list) > 0:
                 if is_exp := launch_control(swarm_list, instruction):
                     create_only = False
-                if (7 > time.localtime()[3] or time.localtime()[
-                    3] >= 22) and not night_search:
+
+                if (
+                        7 > Util.get_time(timezone) or Util.get_time(timezone) >= 22) and not night_search:
                     bots_asleep = True
                     print('Its night, bots are asleep!')
-                while (7 > time.localtime()[3] or time.localtime()[
-                    3] >= 22) and not night_search:
+                while (7 > Util.get_time(timezone) or Util.get_time(timezone) >= 22) and not night_search:
                     time.sleep(300)
 
                 if bots_asleep and not is_exp:
