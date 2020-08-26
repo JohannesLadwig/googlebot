@@ -7,6 +7,7 @@ from Code.SeleniumDocker import SeleniumDocker
 from Code.ProxyDocker import ProxyDocker
 from datetime import datetime
 import Code.Utilities as Util
+
 class Swarm:
     COL_NAMES = ('term_params', 'rank', 'domain', 'title', 'text')
 
@@ -71,6 +72,7 @@ class Swarm:
         self.dir_cookie_jar = dir_cookie_jar
         self.dir_results = dir_results
         self.path_results = f'{self.dir_results}{self.swarm_name}.csv'
+        self.path_searches = f'{self.dir_results}{self.swarm_name}_searches.csv'
         # initialize empty dictionary for instances
         self.instances = {}
         self.nr_results = nr_results
@@ -140,6 +142,17 @@ class Swarm:
     @path_results.setter
     def path_results(self, path):
         self._path_results = path
+        if not os.path.exists(path):
+            with open(path, 'w') as create:
+                pass
+
+    @property
+    def path_searches(self):
+        return self._path_searches
+
+    @path_searches.setter
+    def path_searches(self, path):
+        self._path_searches = path
         if not os.path.exists(path):
             with open(path, 'w') as create:
                 pass
@@ -247,6 +260,7 @@ class Swarm:
                          'exp': {},
                          'nr_create': 0,
                          'nr_exp': 0,
+                         'exp_progress':0,
                          'time': datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
             with open(self._path_log, 'w') as log_file:
                 json.dump(empty_log, log_file)
@@ -431,6 +445,7 @@ class Swarm:
                                  'dem',
                                  bot_id=bot_id,
                                  path_results=self.path_results,
+                                 path_searches=self.path_searches,
                                  nr_results=self.nr_results,
                                  visual=self.visual,
                                  existing=exist,
@@ -492,6 +507,7 @@ class Swarm:
                 self.log[f'incomplete_{step}'] = True
                 self.log['issue'] = issue
                 break
+            self.handle_log('w')
             time.sleep(wait)
 
         return time.perf_counter() - t_0, success
@@ -500,28 +516,30 @@ class Swarm:
         office_hours = self.time_handler(0)
         completed = True
         while office_hours and self.nr_searches_creation > 0:
+            self.log['nr_create'] = self.log['nr_create'] + 1
+
             source = random.choices(['political', 'benign'], [0.8, 0.2], k=1)
             file_source = {'political': self.create_terms,
                            'benign': self.benign_terms}
             terms = random.choices(file_source[source[0]], k=self.nr_inst)
-
             time_elapsed, completed = self.search(terms, store=False)
 
             if not completed:
                 print('Creation searches could no longer be conducted')
                 break
             self.nr_searches_creation -= 1
-            self.log['nr_create'] = self.log['nr_create'] + 1
             self.handle_log('w')
             office_hours = self.time_handler(time_elapsed)
 
         while not creation_only and office_hours and self.nr_searches_exp > 0 and completed:
+            self.log['nr_exp'] = self.log['nr_exp'] + 1
             terms = [self.exp_terms[self.exp_progress]] * self.nr_inst
             time_elapsed, completed = self.search(terms, store=True)
             if not completed:
                 print('Experiment searches could no longer be conducted')
                 break
             self.nr_searches_exp -= 1
-            self.log['nr_exp'] = self.log['nr_exp'] + 1
             self.exp_progress += 1
+            self.log['exp_progress'] = self.exp_progress
             office_hours = self.time_handler(time_elapsed)
+            self.handle_log('w')

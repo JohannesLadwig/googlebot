@@ -48,7 +48,7 @@ def GenerateSearchTerms(in_path=IN_PATH):
         term = clean_header(row.search_term)
         terms[row.political_orientation] = \
             terms[row.political_orientation] + \
-            [{'term': term, 'choice_type': 'domain', 'choice_param': row.domain}]
+            [{'term': term, 'choice_type': 'domain', 'choice_param': row.domain, 'type': 'political'}]
     with open(OUT_PATH['right'], 'w') as jar:
         json.dump(terms['right'], jar)
 
@@ -96,16 +96,16 @@ def GenerateBenignTerms():
                          'people', 'sports', 'history']
     terms = []
     for term in common_terms:
-        terms.append({'term': term, 'choice_type': 'rank', 'choice_param': 1})
+        terms.append({'term': term, 'choice_type': 'rank', 'choice_param': 1, 'type':'benign'})
     country_terms = random.sample(countries, k=15)
     for country in country_terms:
         mod = random.choice(country_modifiers)
-        terms.append({'term': f'{country} {mod}', 'choice_type': 'domain', 'choice_param': 'wikipedia.com'})
+        terms.append({'term': f'{country} {mod}', 'choice_type': 'domain', 'choice_param': 'wikipedia.com', 'type':'benign'})
     for i in range(1, 15):
-        terms.append({'term': conversion(), 'choice_type': 'none', 'choice_param': ''})
+        terms.append({'term': conversion(), 'choice_type': 'none', 'choice_param': '', 'type':'benign'})
 
     for i in range(1, 10):
-        terms.append({'term': equation(), 'choice_type': 'none', 'choice_param': ''})
+        terms.append({'term': equation(), 'choice_type': 'none', 'choice_param': '', 'type':'benign'})
 
     with open(OUT_PATH['benign'], 'w') as jar:
         json.dump(terms, jar)

@@ -187,7 +187,7 @@ def main(nr_results, org=True):
     search_terms = []
     for name_set in name_comb:
         search_terms.append({'term': ' '.join(name_set), 'choice_type': 'none',
-                             'choice_param': ''})
+                             'choice_param': '', 'type': 'neutral'})
     with open(OUT_PATH, 'w') as out:
         json.dump(search_terms, out, separators=(',\n', ':'))
 

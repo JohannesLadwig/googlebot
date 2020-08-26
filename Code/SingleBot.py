@@ -13,23 +13,32 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
+from datetime import datetime
 
 
 class SingleBot:
     IP = '192.168.1.19'
-    COL_NAMES = ('term_params',
+    COL_NAMES = ('title',
+                 'search_term',
                  'rank',
                  'domain',
-                 'title',
                  'text',
                  'flag',
-                 'bot_ID')
+                 'bot_ID',
+                 'time')
+    COL_NAMES_SEARCHES = ('term',
+                          'source',
+                          'time',
+                          'type',
+                          'selected',
+                          'bot_ID')
 
     def __init__(self,
                  port,
                  flag,
                  bot_id,
                  path_results,
+                 path_searches,
                  dir_cookie_jar='Data/cookies/',
                  nr_results=1,
                  visual=False,
@@ -59,11 +68,14 @@ class SingleBot:
         self.bot_id = bot_id
         self.dir_cookie_jar = dir_cookie_jar
         self.path_results = path_results
+        self.path_searches = path_searches
         self.nr_results = nr_results
         self.visual = visual
         self._proxy = proxy
         # initialize empty results Dataframe with desired columns
         self.existing_results = pd.DataFrame(columns=SingleBot.COL_NAMES)
+        self.existing_searches = pd.DataFrame(
+            columns=SingleBot.COL_NAMES_SEARCHES)
         # initialize empty driver options
         self.driver_options = None
         # initialize empty driver
@@ -81,8 +93,7 @@ class SingleBot:
                 "ftpProxy": self._proxy,
                 "sslProxy": self._proxy,
                 "noProxy": ["https://this-page-intentionally-left-blank.org"]
-                }
-
+            }
 
         # initialize path to bot specific results file from results directory
         self._IP = SingleBot.IP
@@ -164,6 +175,17 @@ class SingleBot:
             with open(path, 'w') as create:
                 pass
 
+    @property
+    def path_searches(self):
+        return self._path_searches
+
+    @path_searches.setter
+    def path_searches(self, path):
+        self._path_searches = path
+        if not os.path.exists(path):
+            with open(path, 'w') as create:
+                pass
+
     """
     Setter and getter for nr_results. If nr_results == 0, sets store_results to
     false.
@@ -198,6 +220,26 @@ class SingleBot:
     def interface(self, interface):
         self._interface = interface
 
+    def store_search(self, term_params, selected):
+        if term_params['type'] == 'political':
+            source = term_params['choice_param']
+        else:
+            source = None
+        search_store = {'term': term_params.get('term'),
+                        'source': source,
+                        'time': datetime.now(),
+                        'type': term_params.get('type'),
+                        'selected': selected,
+                        'bot_ID': self.bot_id}
+        self.existing_searches = self.existing_searches.append(search_store,
+                                                               ignore_index=True)
+        self.existing_searches.to_csv(self.path_searches, mode='a',
+                                      header=False,
+                                      index=False)
+        self.existing_searches = None
+        self.existing_searches = pd.DataFrame(
+            columns=SingleBot.COL_NAMES_SEARCHES)
+
     def connection_handler(self, url, wait=30, max_tries=5):
         """
         :param url: str, url to some website
@@ -226,7 +268,8 @@ class SingleBot:
                 retries += 1
                 if retries < max_tries - 1:
                     time.sleep(wait)
-                else: issue = 'webdriver'
+                else:
+                    issue = 'webdriver'
             retries += 1
         return issue
 
@@ -237,8 +280,8 @@ class SingleBot:
         """
         button_path = '/html/body/div/div[3]/div[1]/div/div/div/div/div[2]/div/div/div[2]/div[2]/div/div/g-raised-button/div'
         WebDriverWait(self.driver, 180).until(
-                ec.element_to_be_clickable((By.XPATH, button_path))
-            )
+            ec.element_to_be_clickable((By.XPATH, button_path))
+        )
         self.interface.move_and_click(button_path)
         down_button_path = '/html/body/div/c-wiz/div[2]/div/div/div/div/div[4]/div/div/span/img'
         self.interface.partial_mouse(
@@ -262,7 +305,8 @@ class SingleBot:
         """
 
         if self.visual:
-            self.driver = webdriver.Firefox(desired_capabilities=self._firefox_capabilities)
+            self.driver = webdriver.Firefox(
+                desired_capabilities=self._firefox_capabilities)
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
@@ -286,13 +330,15 @@ class SingleBot:
         accesses webdriver, acceses dead google page and loads cookies from jar.
         """
         if self.visual:
-            self.driver = webdriver.Firefox(desired_capabilities=self._firefox_capabilities)
+            self.driver = webdriver.Firefox(
+                desired_capabilities=self._firefox_capabilities)
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities)
 
-        if issue := self.connection_handler("https://www.google.com/grlf") is None:
+        if issue := self.connection_handler(
+                "https://www.google.com/grlf") is None:
             time.sleep(2)
             with open(self.cookie_jar, 'r') as jar:
                 cookie = json.load(jar)
@@ -367,12 +413,12 @@ class SingleBot:
 
     def select_result(self, term_params):
 
-        time.sleep(random.randint(1,3))
+        time.sleep(random.randint(1, 3))
         max_pages = 3
         page = 1
         rank = 1
         result = None
-        term, choice_type, choice_param = term_params.values()
+        term, choice_type, choice_param, kind = term_params.values()
         while page <= max_pages and result is None:
             if choice_type == 'domain':
                 result = self.match_domain(choice_param)
@@ -384,14 +430,17 @@ class SingleBot:
         if result is not None:
             button = result.find_element_by_class_name('r')
             where = button.rect
-            if where['y'] > self.interface.height - 100 - self.interface.y_scroll_loc:
+            if where[
+                'y'] > self.interface.height - 100 - self.interface.y_scroll_loc:
                 goal = where['y'] - random.randint(self.interface.height // 3,
                                                    2 * self.interface.height // 3)
                 self.interface.scroll(goal + self.interface.y_scroll_loc)
                 where['y'] -= self.interface.y_scroll_loc
 
-            x_loc = int(where['x']) + random.randint(1, (int(where['width'] - 1)//3))
-            y_loc = int(where['y']) + random.randint(1, int(where['height'] - 1))
+            x_loc = int(where['x']) + random.randint(1, (
+                    int(where['width'] - 1) // 3))
+            y_loc = int(where['y']) + random.randint(1,
+                                                     int(where['height'] - 1))
             # store cookies before leaving domain
             cookie = self.driver.get_cookies()
             with open(self.cookie_jar, 'w') as jar:
@@ -402,13 +451,16 @@ class SingleBot:
             self.interface.y_scroll_loc = 0
             time.sleep(3)
             self.interface.scroll_to_bottom(slow=True, limit=5000)
+            return 'success'
+        else:
+            return 'failure'
 
     def shutdown(self):
 
         """
         If current domain is google store cookies from driver in cookie jar and 'close' driver
         """
-        if Util.extract_domain( self.driver.current_url) == 'google.com':
+        if Util.extract_domain(self.driver.current_url) == 'google.com':
             cookie = self.driver.get_cookies()
             with open(self.cookie_jar, 'w') as jar:
                 json.dump(cookie, jar)
@@ -440,7 +492,8 @@ class SingleBot:
                                 'domain': domain,
                                 'text': body,
                                 'flag': self.flag,
-                                'bot_id': self.bot_id}
+                                'bot_id': self.bot_id,
+                                'time': datetime.now()}
                 self.existing_results = \
                     self.existing_results.append(result_clean,
                                                  ignore_index=True)
@@ -457,7 +510,7 @@ class SingleBot:
         specifications.
     """
 
-    def search(self, term_params, store=False):
+    def search(self, term_params, store=False, save_search = True):
         """
         :param term_params: str, phrase or term to google
         :param store: boolean, when True, self.nr_results will be stored
@@ -489,7 +542,8 @@ class SingleBot:
                 )
             except:
                 issue = 'results_load/search'
-                img = self.driver.get_screenshot_as_file(f'Data/log_files/swarms/img{self.bot_id}.png')
+                img = self.driver.get_screenshot_as_file(
+                    f'Data/log_files/swarms/img{self.bot_id}.png')
 
                 return issue
 
@@ -497,9 +551,15 @@ class SingleBot:
             time.sleep(d2 := r.uniform(1.5, 2.5))
             if store:
                 self.download_results(term_params['term'])
+
             if term_params['choice_type'] != 'none':
-                self.select_result(term_params)
-            time.sleep(4.5 - d0 - d1 - d2)
+                selected = self.select_result(term_params)
+            else:
+                selected = 'None'
+            time.sleep(random.uniform(5, 10))
+            if save_search:
+                self.store_search(term_params, selected)
             return None
         else:
             return issue + '/search'
+

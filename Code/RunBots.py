@@ -126,6 +126,13 @@ def set_search_param(process, all_bots):
             individual.nr_results = nr_res
 
 
+def restart_search_numbers(swarms):
+    for swarm in swarms:
+        swarm.nr_searches_creation = max(0, swarm.nr_searches_creation - swarm.log['nr_create'])
+        swarm.nr_searches_exp = max(0, swarm.nr_searches_exp - swarm.log['nr_exp'])
+        swarm.exp_progress = swarm.log['exp_progress']
+
+
 def execute(swarm, create=False):
     swarm.wake()
 
