@@ -7,7 +7,6 @@ from Code.SeleniumDocker import SeleniumDocker
 from Code.ProxyDocker import ProxyDocker
 from datetime import datetime
 import Code.Utilities as Util
-
 class Swarm:
     COL_NAMES = ('term_params', 'rank', 'domain', 'title', 'text')
 
@@ -21,8 +20,8 @@ class Swarm:
                  nr_searches_exp,
                  path_terms_experiment,
                  swarm_name,
-                 proxy={},
-                 timezone='UTC',
+                 proxy=None,
+                 timezone=Util.get_timezone(),
                  nr_results=1,
                  delay_min=10,
                  night_search=False,
@@ -49,6 +48,8 @@ class Swarm:
         :param dir_log: str, directory where swarm creates its log
         :param visual: boolean, if True, instannces are run in non dockerized, visual selenium
         """
+        if proxy is None:
+            proxy = {''}
         self.port = port
         self.nr_inst = nr_inst
         self.flag = flag
@@ -69,7 +70,7 @@ class Swarm:
         self.timezone = timezone
         self.dir_cookie_jar = dir_cookie_jar
         self.dir_results = dir_results
-
+        self.path_results = f'{self.dir_results}{self.swarm_name}.csv'
         # initialize empty dictionary for instances
         self.instances = {}
         self.nr_results = nr_results
@@ -127,6 +128,40 @@ class Swarm:
         else:
             raise ValueError(
                 f'Invalid number of searches: {number}, nr. of searches should be an integer >= 0')
+
+    """results path getter and setter, creates file if none exists in location 
+    of passed path. (allways use with known good directories)
+    """
+
+    @property
+    def path_results(self):
+        return self._path_results
+
+    @path_results.setter
+    def path_results(self, path):
+        self._path_results = path
+        if not os.path.exists(path):
+            with open(path, 'w') as create:
+                pass
+
+    """
+    results directory getter and setter, raises value error if non valid directory
+    is set
+    """
+
+    @property
+    def dir_results(self):
+        return self._dir_results
+
+    @dir_results.setter
+    def dir_results(self, path):
+        if os.path.isdir(path):
+            self._dir_results = path
+        else:
+            raise ValueError(f'{path} is not a valid directory')
+
+        self.path_results = f'{self.dir_results}{self.swarm_name}.csv'
+
 
     @property
     def nr_searches_exp(self):
@@ -281,11 +316,13 @@ class Swarm:
 
     @timezone.setter
     def timezone(self, zone_name):
+        if zone_name is None:
+            zone_name = Util.get_timezone()
         with open('Data/diverse/timezones.json', 'r') as tz_file:
             valid_tz = json.load(tz_file)
         if zone_name not in valid_tz:
             raise ValueError(
-                f'{self.zone_name} is not a valid timezone. See Data/diverse/timezones.json')
+                f'{zone_name} is not a valid timezone. See Data/diverse/timezones.json')
         else:
             self._timezone = zone_name
 
@@ -393,6 +430,7 @@ class Swarm:
             instance = SingleBot(self.port,
                                  'dem',
                                  bot_id=bot_id,
+                                 path_results=self.path_results,
                                  nr_results=self.nr_results,
                                  visual=self.visual,
                                  existing=exist,

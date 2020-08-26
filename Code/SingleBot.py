@@ -29,8 +29,8 @@ class SingleBot:
                  port,
                  flag,
                  bot_id,
+                 path_results,
                  dir_cookie_jar='Data/cookies/',
-                 dir_results='Data/results/',
                  nr_results=1,
                  visual=False,
                  existing=False,
@@ -58,7 +58,7 @@ class SingleBot:
         self.flag = flag
         self.bot_id = bot_id
         self.dir_cookie_jar = dir_cookie_jar
-        self.dir_results = dir_results
+        self.path_results = path_results
         self.nr_results = nr_results
         self.visual = visual
         self._proxy = proxy
@@ -85,7 +85,6 @@ class SingleBot:
 
 
         # initialize path to bot specific results file from results directory
-        self.path_results = self.dir_results + self.bot_id + '.csv'
         self._IP = SingleBot.IP
         # If old cookies and results are not to be reused, run create.
         if not existing:
@@ -131,22 +130,6 @@ class SingleBot:
     def dir_cookie_jar(self, path):
         if os.path.isdir(path):
             self._dir_cookie_jar = path
-        else:
-            raise ValueError(f'{path} is not a valid directory')
-
-    """
-    results directory getter and setter, raises value error if non valid directory
-    is set
-    """
-
-    @property
-    def dir_results(self):
-        return self._dir_results
-
-    @dir_results.setter
-    def dir_results(self, path):
-        if os.path.isdir(path):
-            self._dir_results = path
         else:
             raise ValueError(f'{path} is not a valid directory')
 

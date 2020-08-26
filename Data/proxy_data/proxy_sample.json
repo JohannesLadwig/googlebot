@@ -1,4 +1,5 @@
-{"swarm_a":{
+{"main": {"TZ": "UTC"},
+  "swarm_a":{
   "domain": "<HOST/IP>:<PORT>/",
   "username":"<USERNAME>" ,
   "password":"<PASSWORD>",
