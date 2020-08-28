@@ -86,6 +86,10 @@ class SingleBot:
 
         # set desired capabilitiies
         self._firefox_capabilities = DesiredCapabilities.FIREFOX
+        self._firefox_options = webdriver.FirefoxOptions()
+        self._firefox_options.set_preference("media.autoplay.default", 1)
+        self._firefox_options.set_preference("media.autoplay.allow-mutedt", 'false')
+
         if self._proxy is not None:
             self._firefox_capabilities['proxy'] = {
                 "proxyType": "MANUAL",
@@ -306,7 +310,8 @@ class SingleBot:
 
         if self.visual:
             self.driver = webdriver.Firefox(
-                desired_capabilities=self._firefox_capabilities)
+                desired_capabilities=self._firefox_capabilities,
+                )
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
@@ -331,11 +336,13 @@ class SingleBot:
         """
         if self.visual:
             self.driver = webdriver.Firefox(
-                desired_capabilities=self._firefox_capabilities)
+                desired_capabilities=self._firefox_capabilities,
+                options=self._firefox_options)
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
-                desired_capabilities=self._firefox_capabilities)
+                desired_capabilities=self._firefox_capabilities,
+                options=self._firefox_options)
 
         if issue := self.connection_handler(
                 "https://www.google.com/grlf") is None:

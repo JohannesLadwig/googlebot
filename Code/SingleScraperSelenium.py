@@ -7,8 +7,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 
 class SingleScraperSelenium:
-    COL_NAMES = (
-        'term_params', 'date_scraped', 'source',
+    COL_NAMES = ('term_params', 'date_scraped', 'source', 'domain',
         'political_orientation')
 
     SOURCE_PROPERTIES = {
@@ -128,7 +127,8 @@ class SingleScraperSelenium:
                                 'date_scraped': self.date_scraped,
                                 'source': self.source,
                                 'domain': self.source_domain,
-                                'political_orientation': self.political_orientation}
+                                'political_orientation': self.political_orientation
+                                }
 
                 self.existing_results = \
                     self.existing_results.append(result_clean,
