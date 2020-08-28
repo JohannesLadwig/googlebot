@@ -44,9 +44,8 @@ class SingleScraperSelenium:
         self.political_orientation = political_orientation
         self.path_results = path_results
 
-        self.driver_options = None
         self.driver = None
-
+        self._desired_cap = DesiredCapabilities.FIREFOX
         self.existing_results = pd.DataFrame(columns=SingleScraperSelenium.COL_NAMES)
 
         self.source_url, self.source_class_key, self.source_domain = \
@@ -99,7 +98,7 @@ class SingleScraperSelenium:
         # self.driver = webdriver.Remote(
         #     f'http://192.168.178.37:{self.port}/wd/hub',
         #     DesiredCapabilities.FIREFOX)
-        self.driver = webdriver.Firefox()
+        self.driver = webdriver.Firefox(desired_capabilities=self._desired_cap)
         self.scrape(limit)
         self.driver.close()
 

@@ -7,7 +7,6 @@ import json
 import random
 from selenium import webdriver
 # import seleniumwire
-import selenium.common.exceptions as sel_exc
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
@@ -85,7 +84,7 @@ class SingleBot:
         self.cookie_jar = self.dir_cookie_jar + self.bot_id + '.json'
 
         # set desired capabilitiies
-        self._firefox_capabilities = DesiredCapabilities.FIREFOX
+        self._firefox_capabilities = DesiredCapabilities.FIREFOX.copy()
         self._firefox_options = webdriver.FirefoxOptions()
         self._firefox_options.set_preference("media.autoplay.default", 1)
         self._firefox_options.set_preference("media.autoplay.allow-mutedt", 'false')
@@ -96,7 +95,7 @@ class SingleBot:
                 "httpProxy": self._proxy,
                 "ftpProxy": self._proxy,
                 "sslProxy": self._proxy,
-                "noProxy": ["https://this-page-intentionally-left-blank.org"]
+                "noProxy": ["this-page-intentionally-left-blank.org"]
             }
 
         # initialize path to bot specific results file from results directory
@@ -244,38 +243,6 @@ class SingleBot:
         self.existing_searches = pd.DataFrame(
             columns=SingleBot.COL_NAMES_SEARCHES)
 
-    def connection_handler(self, url, wait=30, max_tries=5):
-        """
-        :param url: str, url to some website
-        :param wait: int, nr. of seconds to wait between retries
-        :param max_tries: int, nr. of times to retry querrying website
-        :return: boolean, True  if website succesfully loaded, false else
-
-        Note: only waits in case of timeour or  webdriver exception. Other
-            Errors in page loading are not handled, and must be adressed should
-            they occour.
-        """
-        retries = 0
-        issue = None
-        while retries < max_tries:
-
-            try:
-                self.driver.get(url)
-                return issue
-            except sel_exc.TimeoutException:
-                retries += 1
-                if retries < max_tries - 1:
-                    time.sleep(wait)
-                else:
-                    issue = 'timeout'
-            except sel_exc.WebDriverException:
-                retries += 1
-                if retries < max_tries - 1:
-                    time.sleep(wait)
-                else:
-                    issue = 'webdriver'
-            retries += 1
-        return issue
 
     def accept_cookies(self):
         """
@@ -317,10 +284,10 @@ class SingleBot:
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities,
             )
-        self.driver.implicitly_wait(30)
+        self.driver.implicitly_wait(120)
         self.interface = BI.BotInterface(self.driver)
         self.interface.set_cursor_loc()
-        self.driver.get("https://www.google.com/")
+        Util.connection_handler(self.driver, "https://www.google.com/")
         if accept_cookie:
             self.accept_cookies()
         time.sleep(2)
@@ -344,8 +311,8 @@ class SingleBot:
                 desired_capabilities=self._firefox_capabilities,
                 options=self._firefox_options)
 
-        if issue := self.connection_handler(
-                "https://www.google.com/grlf") is None:
+        if issue := Util.connection_handler(self.driver,
+                "https://www.google.com/") is None:
             time.sleep(2)
             with open(self.cookie_jar, 'r') as jar:
                 cookie = json.load(jar)
@@ -535,7 +502,7 @@ class SingleBot:
                 words = words[0:nr]
                 term_params['term'] = ' '.join(words)
         # open google, if sucessfull proceed
-        if issue := self.connection_handler("https://www.google.com/") is None:
+        if issue := Util.connection_handler(self.driver, "https://www.google.com/") is None:
             search_field = self.driver.find_element_by_name("q")
             search_field.clear()
             time.sleep(d0 := r.uniform(0.5, 1.5))

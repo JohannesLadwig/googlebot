@@ -7,6 +7,8 @@ import tldextract
 import scipy.interpolate as si
 from datetime import datetime
 import pytz
+import selenium.common.exceptions as sel_exc
+
 from pytz import reference
 
 TITLE_LOC = {'Breitbart': 0, 'Slate': 0, 'AlterNet': 0, 'TheBlaze': 0}
@@ -164,3 +166,47 @@ def get_time(TZ):
 def get_timezone():
     tz = time.tzname[0]
     return tz
+
+
+def connection_handler(driver, url, wait=30, max_tries=5):
+    """
+    :param driver: selenium driver object
+    :param url: str, url to some website
+    :param wait: int, nr. of seconds to wait between retries
+    :param max_tries: int, nr. of times to retry querrying website
+    :return: boolean, True  if website succesfully loaded, false else
+
+    Note: only waits in case of timeour or  webdriver exception. Other
+        Errors in page loading are not handled, and must be adressed should
+        they occour.
+    """
+    retries = 0
+    issue = None
+    while retries < max_tries:
+
+        try:
+            driver.get(url)
+            return issue
+        except sel_exc.TimeoutException:
+            retries += 1
+            if retries < max_tries - 1:
+                time.sleep(wait)
+            else:
+                issue = 'timeout'
+        except sel_exc.WebDriverException:
+            retries += 1
+            if retries < max_tries - 1:
+                time.sleep(wait)
+            else:
+                issue = 'webdriver'
+        retries += 1
+    time.sleep(300)
+    try:
+        driver.get(url)
+        issue = None
+    except sel_exc.TimeoutException:
+        issue = 'timeout'
+    except sel_exc.WebDriverException:
+        issue = 'webdriver'
+
+    return issue

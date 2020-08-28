@@ -266,7 +266,6 @@ class BotInterface:
             time.sleep(0.02)
         return self.y_scroll_loc
 
-
     def set_cursor_loc(self):
         """
         Finds the cursor location and scrolls to 0
@@ -274,7 +273,7 @@ class BotInterface:
         """
         # moves cursor to html element with known coordinates
         almost_empty = 'https://this-page-intentionally-left-blank.org'
-        self.driver.get(almost_empty)
+        Util.connection_handler(self.driver, almost_empty)
 
         # Fix height (maybe move this to a more reasonable location)
         e = self.driver.find_element_by_tag_name('html')

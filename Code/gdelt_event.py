@@ -1,7 +1,6 @@
 
 import pandas as pd
 import json
-import pdb
 
 COL_NAMES = ['GlobalEventID', 'Day', 'MonthYear', 'Year', 'FractionDate',
              'Actor1Code', 'Actor1Name', 'Actor1CountryCode',
