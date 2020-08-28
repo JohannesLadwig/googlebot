@@ -1,6 +1,7 @@
 from Code.SingleScraper import SingleScraper
 import pandas as pd
 from datetime import date
+from Code.SingleScraperSelenium import SingleScraperSelenium
 
 OUT_PATH = 'Data/terms/Raw_Media_Headers.csv'
 COL_NAMES = ['term_params',
@@ -27,11 +28,38 @@ def news_circle():
     Elizabeth = SingleScraper(source='AlterNet',
                               political_orientation='left',
                               path_results=OUT_PATH)
+
+    Alexandria = SingleScraper(source='OccupyDemocrats',
+                              political_orientation='left',
+                              path_results=OUT_PATH)
+
+    Joe = SingleScraperSelenium(source='CNN',
+                              political_orientation='left',
+                              path_results=OUT_PATH)
+
+    Kamala = SingleScraperSelenium(source='DailyBeast',
+                              political_orientation='left',
+                              path_results=OUT_PATH)
+
+    Mike = SingleScraper(source='DailyCaller',
+                              political_orientation='right',
+                              path_results=OUT_PATH)
+
+    Tucker = SingleScraper(source='FoxNews',
+                              political_orientation='right',
+                              path_results=OUT_PATH)
+
+
     Donald.read_the_news()
     Mitch.read_the_news()
+    Tucker.read_the_news(20)
+    Mike.read_the_news()
 
-    Bernie.read_the_news()
+    #Bernie.read_the_news()
     Elizabeth.read_the_news()
+    Alexandria.read_the_news()
+    Joe.read_the_news(20)
+    Kamala.read_the_news()
 
     today = pd.Timestamp(date.today())
 

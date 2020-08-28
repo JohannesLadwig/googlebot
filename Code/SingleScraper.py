@@ -6,7 +6,6 @@ import requests
 from bs4 import BeautifulSoup
 
 
-
 class SingleScraper:
     COL_NAMES = (
         'term_params', 'date_scraped', 'source', 'domain',
@@ -27,8 +26,29 @@ class SingleScraper:
         'AlterNet': {'URL': 'https://www.alternet.org/category/news-politics/',
                      'CLASS_KEY': 'entry-title grid-title',
                      'METHOD': select_slate,
-                     'DOMAIN':'alternet.com'}
+                     'DOMAIN': 'alternet.com'},
+        'DailyCaller': {'URL': 'https://dailycaller.com/section/politics/',
+                        'CLASS_KEY': 'text-black',
+                        'METHOD': select_slate,
+                        'DOMAIN': 'dailycaller.com'},
+        'OccupyDemocrats': {'URL': 'https://occupydemocrats.com/category/politics/',
+                            'CLASS_KEY': 'post-title',
+                            'METHOD': select_slate,
+                            'DOMAIN': 'occupydemocrats.com'},
+        'DailyBeast': {'URL': 'https://www.thedailybeast.com/category/politics',
+                       'CLASS_KEY': 'TitleText.TitleText--with-gradient.GridStory__title-text',
+                       'METHOD': select_slate,
+                       'DOMAIN': 'thedailybeast.com'},
+        'FoxNews': {'URL': 'https://www.foxnews.com/politics',
+                    'CLASS_KEY': 'title',
+                    'METHOD': select_slate,
+                    'DOMAIN': 'foxnews.com'},
+        'CNN': {'URL': 'https://edition.cnn.com/politics',
+                'CLASS_KEY': 'cd__headline-text',
+                'METHOD': select_slate,
+                'DOMAIN': 'cnn.com'}
     }
+
     """
     Constructs a Bot which can search google and store search results.
     
@@ -95,12 +115,14 @@ class SingleScraper:
     term - the current search term. This is part of the resulting data vector.
     """
 
-    def read_the_news(self):
+    def read_the_news(self, limit=50):
         self.date_scraped = date.today()
         req = requests.get(self.source_url, headers=self.headers)
         soup = BeautifulSoup(req.content, 'html.parser')
         results_in = soup.find_all(class_=self.source_class_key)
-        for raw_result in results_in:
+        for i, raw_result in enumerate(results_in):
+            if i >= limit:
+                break
             header = self.select_method(raw_result)
             if len(header) > 0:
                 result_clean = {'term_params': header,
@@ -111,4 +133,5 @@ class SingleScraper:
                 self.existing_results = \
                     self.existing_results.append(result_clean,
                                                  ignore_index=True)
-        self.existing_results.to_csv(self.path_results, mode='a', index=False, header=False)
+        self.existing_results.to_csv(self.path_results, mode='a', index=False,
+                                     header=False)
