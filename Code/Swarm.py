@@ -261,7 +261,8 @@ class Swarm:
                          'nr_create': 0,
                          'nr_exp': 0,
                          'exp_progress':0,
-                         'time': datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
+                         'time': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                         'profile':{}}
             with open(self._path_log, 'w') as log_file:
                 json.dump(empty_log, log_file)
             del log_file
@@ -439,13 +440,22 @@ class Swarm:
                                        'container_' + self.swarm_name,
                                        self.timezone)
             time.sleep(5)
+        with open('Data/diverse/profile.json') as profiles_in:
+            profiles = json.load(profiles_in)
+
         for i in range(self.nr_inst):
             bot_id = f'{self.swarm_name}{i}'
+            if exist:
+                profile = self.log['profile'][bot_id]
+            else:
+                profile = random.choice(profiles)
+                self.log['profile'][bot_id] = profile
             instance = SingleBot(self.port,
                                  'dem',
                                  bot_id=bot_id,
                                  path_results=self.path_results,
                                  path_searches=self.path_searches,
+                                 user_agent=profile,
                                  nr_results=self.nr_results,
                                  visual=self.visual,
                                  existing=exist,
@@ -476,7 +486,7 @@ class Swarm:
 
     def search(self, terms, store=False):
         wait = 60 * self.delay_min / (2 * self.nr_inst + 1)
-        overall_success = True
+        success = True
         t_0 = time.perf_counter()
         if store:
             step = 'exp'
@@ -506,6 +516,7 @@ class Swarm:
             else:
                 self.log[f'incomplete_{step}'] = True
                 self.log['issue'] = issue
+                self.handle_log('w')
                 break
             self.handle_log('w')
             time.sleep(wait)

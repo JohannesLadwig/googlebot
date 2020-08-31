@@ -208,9 +208,16 @@ if __name__ == "__main__":
     keep_cookie = Util.speech_bool(
         input('Re-use old cookies and run from log? (y/n): '))
     print('Creating the bots, this will take a minute.')
+    if keep_cookie:
+        for bot in swarm_list:
+            bot.launch(keep_cookie)
+    else:
+        intermediate_a = partial(Swarm.launch, exist=keep_cookie)
+        pool = mp.Pool(processes=5)
+        swarm_list = pool.map(intermediate_a, swarm_list)
+        pool.close()
+        pool.join()
 
-    for bot in swarm_list:
-        bot.launch(keep_cookie)
     print(
         f'{nr_inst} instances have been created for four political and one neutral swarm')
 
@@ -266,9 +273,9 @@ if __name__ == "__main__":
                         raise Exception(
                             f'The benign file has been corrupted just before restart')
 
-                intermediate = partial(execute, create=create_only)
+                intermediate_b = partial(execute, create=create_only)
                 pool = mp.Pool(processes=5)
-                swarm_list = pool.map(intermediate, swarm_list)
+                swarm_list = pool.map(intermediate_b, swarm_list)
                 pool.close()
                 pool.join()
                 print(

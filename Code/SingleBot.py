@@ -38,6 +38,7 @@ class SingleBot:
                  bot_id,
                  path_results,
                  path_searches,
+                 user_agent,
                  dir_cookie_jar='Data/cookies/',
                  nr_results=1,
                  visual=False,
@@ -84,10 +85,11 @@ class SingleBot:
         self.cookie_jar = self.dir_cookie_jar + self.bot_id + '.json'
 
         # set desired capabilitiies
+        self._profile = webdriver.FirefoxProfile()
+        self._profile.set_preference("general.useragent.override", user_agent)
+
         self._firefox_capabilities = DesiredCapabilities.FIREFOX.copy()
         self._firefox_options = webdriver.FirefoxOptions()
-        self._firefox_options.set_preference("media.autoplay.default", 1)
-        self._firefox_options.set_preference("media.autoplay.allow-mutedt", 'false')
 
         if self._proxy is not None:
             self._firefox_capabilities['proxy'] = {
@@ -278,11 +280,13 @@ class SingleBot:
         if self.visual:
             self.driver = webdriver.Firefox(
                 desired_capabilities=self._firefox_capabilities,
+                firefox_profile=self._profile
                 )
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities,
+                browser_profile=self._profile
             )
         self.driver.implicitly_wait(120)
         self.interface = BI.BotInterface(self.driver)
@@ -304,12 +308,12 @@ class SingleBot:
         if self.visual:
             self.driver = webdriver.Firefox(
                 desired_capabilities=self._firefox_capabilities,
-                options=self._firefox_options)
+                )
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities,
-                options=self._firefox_options)
+                )
 
         if issue := Util.connection_handler(self.driver,
                 "https://www.google.com/") is None:
@@ -510,16 +514,34 @@ class SingleBot:
             time.sleep(d1 := r.uniform(0.15, 0.5))
             search_field.send_keys(Keys.RETURN)
             # checks if results will load
+            nr_available = 0
             try:
-                WebDriverWait(self.driver, 180).until(
-                    ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
-                )
+                e = WebDriverWait(self.driver, 180).until(
+                    ec.presence_of_element_located((By.CLASS_NAME, 'WE0UJf')))
+                nr_available = int(re.search('\\b[0-9]+', e.text).group(0))
             except:
-                issue = 'results_load/search'
-                img = self.driver.get_screenshot_as_file(
-                    f'Data/log_files/swarms/img{self.bot_id}.png')
+                try:
+                    WebDriverWait(self.driver, 180).until(
+                        ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
+                    )
+                    no_nr = True
+                except:
+                    issue = 'results_load/search'
+                    img = self.driver.get_screenshot_as_file(
+                        f'Data/log_files/swarms/img{self.bot_id}.png')
 
-                return issue
+                    return issue
+            if (nr_available > 0) or no_nr:
+                try:
+                    WebDriverWait(self.driver, 180).until(
+                        ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
+                    )
+                except:
+                    issue = 'results_load/search'
+                    img = self.driver.get_screenshot_as_file(
+                        f'Data/log_files/swarms/img{self.bot_id}.png')
+
+                    return issue
 
             # let more results load and download if needed
             time.sleep(d2 := r.uniform(1.5, 2.5))
