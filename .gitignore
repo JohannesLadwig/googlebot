@@ -7,3 +7,5 @@ __pycache__
 geckodriver.log
 Code/proxy_connect.py
 Data/proxy_data/proxy_data.json
+Data/diverse/profile.json
+Data/profiles

@@ -9,13 +9,14 @@ from datetime import datetime
 import pytz
 import selenium.common.exceptions as sel_exc
 
+
 from pytz import reference
 
 TITLE_LOC = {'Breitbart': 0, 'Slate': 0, 'AlterNet': 0, 'TheBlaze': 0}
 
 
-def natural_typing_in_field(field, string, min_delay=0.225, max_delay=0.275,
-                            p_error=0.05):
+def natural_typing_in_field(field, string, min_delay=0.18, max_delay=0.22,
+                            p_error=0.03):
     with open("Data/diverse/adjacent_letters.json", 'r') as f:
         letters_dict = json.load(f)
     letters = "abcdefghijklmnopqrstuvwxyz"
@@ -36,7 +37,8 @@ def natural_typing_in_field(field, string, min_delay=0.225, max_delay=0.275,
                 true_following += 1
             delay = r.uniform(min_delay, max_delay)
             time.sleep(delay)
-            while true_following > 0:
+            keep_mistake = r.choices([True, False], [0.22, 0.78])[0]
+            while true_following > 0 and not keep_mistake:
                 delay = r.uniform(min_delay, max_delay)
                 time.sleep(delay)
 

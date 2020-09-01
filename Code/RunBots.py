@@ -24,8 +24,7 @@ def declare_swarms(inst, t, night, proxy):
               nr_results=1,
               delay_min=t,
               night_search=night,
-              dir_results='Data/results/',
-              dir_cookie_jar='Data/cookies/')
+              dir_results='Data/results/')
 
     b = Swarm(port=4445,
               nr_inst=inst,
@@ -41,9 +40,7 @@ def declare_swarms(inst, t, night, proxy):
               nr_results=1,
               delay_min=t,
               night_search=night,
-              dir_results='Data/results/',
-              dir_cookie_jar='Data/cookies/'
-              )
+              dir_results='Data/results/')
     c = Swarm(port=4446,
               nr_inst=inst,
               flag='right',
@@ -58,9 +55,7 @@ def declare_swarms(inst, t, night, proxy):
               nr_results=1,
               delay_min=t,
               night_search=night,
-              dir_results='Data/results/',
-              dir_cookie_jar='Data/cookies/'
-              )
+              dir_results='Data/results/')
     d = Swarm(port=4447,
               nr_inst=inst,
               flag='right',
@@ -75,9 +70,7 @@ def declare_swarms(inst, t, night, proxy):
               nr_results=1,
               delay_min=t,
               night_search=night,
-              dir_results='Data/results/',
-              dir_cookie_jar='Data/cookies/'
-              )
+              dir_results='Data/results/')
     e = Swarm(port=4448,
               nr_inst=inst,
               flag='control',
@@ -92,9 +85,7 @@ def declare_swarms(inst, t, night, proxy):
               nr_results=1,
               delay_min=t,
               night_search=night,
-              dir_results='Data/results/',
-              dir_cookie_jar='Data/cookies/'
-              )
+              dir_results='Data/results/')
     return [a, b, c, d, e]
 
 
@@ -159,12 +150,14 @@ def visual(nr_vis, t_delay, nr_searches, nr_experiment, proxy):
                   delay_min=t_delay,
                   night_search=True,
                   dir_results='Data/results/',
-                  dir_cookie_jar='Data/cookies/',
                   dir_log='Data/log_files/swarms/',
                   visual=True)
     bernd.launch(exist=False)
     execute(bernd)
 
+def create(swarm):
+    swarm.launch(exist=False)
+    return swarm
 
 def launch_control(all_bots, process):
     launch = False
@@ -212,9 +205,8 @@ if __name__ == "__main__":
         for bot in swarm_list:
             bot.launch(keep_cookie)
     else:
-        intermediate_a = partial(Swarm.launch, exist=keep_cookie)
         pool = mp.Pool(processes=5)
-        swarm_list = pool.map(intermediate_a, swarm_list)
+        swarm_list = pool.map(create, swarm_list)
         pool.close()
         pool.join()
 

@@ -8,6 +8,7 @@ from Code.ProxyDocker import ProxyDocker
 from datetime import datetime
 import Code.Utilities as Util
 
+
 class Swarm:
     COL_NAMES = ('term_params', 'rank', 'domain', 'title', 'text')
 
@@ -27,7 +28,7 @@ class Swarm:
                  delay_min=10,
                  night_search=False,
                  dir_results='Data/results/',
-                 dir_cookie_jar='Data/cookies/',
+
                  dir_log='Data/log_files/swarms/',
                  visual=False
                  ):
@@ -45,7 +46,6 @@ class Swarm:
         :param delay_min: int, delay between rounds of searches
         :param night_search: boolean, if False, searches are only conducted during the day
         :param dir_results: str, directory where results are to be stored
-        :param dir_cookie_jar: str, directory where cookies are to be stored
         :param dir_log: str, directory where swarm creates its log
         :param visual: boolean, if True, instannces are run in non dockerized, visual selenium
         """
@@ -69,7 +69,6 @@ class Swarm:
 
         self.proxy = proxy
         self.timezone = timezone
-        self.dir_cookie_jar = dir_cookie_jar
         self.dir_results = dir_results
         self.path_results = f'{self.dir_results}{self.swarm_name}.csv'
         self.path_searches = f'{self.dir_results}{self.swarm_name}_searches.csv'
@@ -90,6 +89,10 @@ class Swarm:
         self.log = None
         self.handle_log('r')
 
+        self._profile_dir = {'Host':f'/Users/johannes/Dropbox/thesis_code/googlebot/Data/profiles/swarm_{self.swarm_name}/',
+                             'Selenium': f'/Users/johannes/Dropbox/thesis_code/googlebot/Data/profiles/swarm_{self.swarm_name}/'}
+        if not visual:
+            self._profile_dir['Selenium'] = '/tmp/'
     @property
     def port(self):
         return self._port
@@ -175,7 +178,6 @@ class Swarm:
 
         self.path_results = f'{self.dir_results}{self.swarm_name}.csv'
 
-
     @property
     def nr_searches_exp(self):
         return self._nr_searches_exp
@@ -260,9 +262,9 @@ class Swarm:
                          'exp': {},
                          'nr_create': 0,
                          'nr_exp': 0,
-                         'exp_progress':0,
+                         'exp_progress': 0,
                          'time': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                         'profile':{}}
+                         'profile': {}}
             with open(self._path_log, 'w') as log_file:
                 json.dump(empty_log, log_file)
             del log_file
@@ -315,7 +317,8 @@ class Swarm:
 
     @proxy.setter
     def proxy(self, proxy_dict):
-        self._proxy = {'domain': None, 'username': None, 'password': None, 'port': None}
+        self._proxy = {'domain': None, 'username': None, 'password': None,
+                       'port': None}
         if 'domain' in proxy_dict:
             self._proxy['domain'] = proxy_dict['domain']
             if 'username' in proxy_dict:
@@ -436,9 +439,11 @@ class Swarm:
     def launch(self, exist):
         selenium_proxy = self.launch_proxy()
         if not self.visual:
+            shared_folder = f'{self._profile_dir["Host"]}:{self._profile_dir["Selenium"]}'
             container = SeleniumDocker(self.port,
                                        'container_' + self.swarm_name,
-                                       self.timezone)
+                                       self.timezone,
+                                       shared_folder=shared_folder)
             time.sleep(5)
         with open('Data/diverse/profile.json') as profiles_in:
             profiles = json.load(profiles_in)
@@ -456,6 +461,7 @@ class Swarm:
                                  path_results=self.path_results,
                                  path_searches=self.path_searches,
                                  user_agent=profile,
+                                 profile_dir=self._profile_dir,
                                  nr_results=self.nr_results,
                                  visual=self.visual,
                                  existing=exist,
@@ -463,6 +469,7 @@ class Swarm:
             self.instances[bot_id] = instance
             self.log['create'][bot_id] = self.log['create'].get(bot_id, 0)
             self.log['exp'][bot_id] = self.log['exp'].get(bot_id, 0)
+        self.handle_log('w')
 
     def time_handler(self, t_elapsed):
         office_hour = True
@@ -470,6 +477,7 @@ class Swarm:
             office_hour = False
         elif (wait := (60 * self.delay_min - t_elapsed + (
                 t_elapsed / self.nr_inst))) > 0:
+            wait = random.uniform(wait, wait + 10)
             time.sleep(wait)
         return office_hour or self.night_search
 
@@ -486,6 +494,7 @@ class Swarm:
 
     def search(self, terms, store=False):
         wait = 60 * self.delay_min / (2 * self.nr_inst + 1)
+
         success = True
         t_0 = time.perf_counter()
         if store:
@@ -519,12 +528,12 @@ class Swarm:
                 self.handle_log('w')
                 break
             self.handle_log('w')
-            time.sleep(wait)
+            time.sleep(random.uniform(2 * wait//3, wait))
 
         return time.perf_counter() - t_0, success
 
     def conduct_searches(self, creation_only=False):
-        office_hours = self.time_handler(0)
+        office_hours = self.time_handler(self.delay_min * 60)
         completed = True
         while office_hours and self.nr_searches_creation > 0:
             self.log['nr_create'] = self.log['nr_create'] + 1

@@ -6,6 +6,8 @@ import random
 from Code import Utilities as Util
 
 from selenium import webdriver
+
+
 class BotInterface:
     """
     test here: https://codepen.io/falldowngoboone/pen/PwzPYv
@@ -142,14 +144,16 @@ class BotInterface:
         significant_movement = d > 10
 
         # calculate speed of mouse, uses an s curve with an aditional growth factor
-        speed = (9 / (1 + math.exp(-0.1 * (d - 100))) + math.sqrt(d / 4) + 5)
+        a = random.uniform(7,10)
+        b = random.uniform(4,6)
+        speed = (a / (1 + math.exp(-0.1 * (d - 100))) + math.sqrt(d / 4) + b)
 
         # n_jums is given by the inverse of speed times distance
         # uses 1 when distance is 0
         n_jumps = max(1, d) * (1 / speed)
 
         # speed up movement in case this is desired
-        if fast and d < 100:
+        if fast and d < 90:
             n_jumps = n_jumps // 2
 
         # convert n_jums to int and ensure > 0
@@ -202,19 +206,19 @@ class BotInterface:
         direction_y = np.sign(self.y_mouse_loc - y_goal)
         y_dist = max(y_goal, self.y_mouse_loc) - min(y_goal, self.y_mouse_loc)
 
-        if x_dist > 100:
-            x_interim = x_goal + direction_x * random.randint(30, 100)
+        if x_dist > 90:
+            x_interim = x_goal + direction_x * random.randint(30, 90)
             interim_move = True
-        if y_dist > 100:
-            y_interim = y_goal + direction_y * random.randint(30, 100)
+        if y_dist > 90:
+            y_interim = y_goal + direction_y * random.randint(30, 90)
             interim_move = True
         if interim_move:
-            if 0 < x_dist <= 100:
+            if 0 < x_dist <= 90:
                 x_interim = x_goal + direction_x * random.randint(0, x_dist)
             elif x_dist == 0:
                 x_interim = x_goal + direction_x * random.randint(0, 10)
 
-            if 0 < y_dist <= 100:
+            if 0 < y_dist <= 90:
                 y_interim = y_goal + direction_y * random.randint(0, y_dist)
             elif y_dist == 0:
                 y_interim = y_goal + direction_y * random.randint(0, 10)
@@ -295,17 +299,20 @@ class BotInterface:
     def move_and_click(self, element_x_path):
         button = self.driver.find_element_by_xpath(element_x_path)
         where = button.rect
-        x_loc = int(where['x']) + random.randint(1, max(int(where['width'] - 1), 1))
-        y_loc = int(where['y']) + random.randint(1, max(int(where['height'] - 1), 1))
+        x_loc = int(where['x']) + random.randint(1, max(int(where['width'] - 1),
+                                                        1))
+        y_loc = int(where['y']) + random.randint(1,
+                                                 max(int(where['height'] - 1),
+                                                     1))
         self.mouse_to(x_loc, y_loc)
         self.click()
 
     def scroll_to_bottom(self, slow=False, limit=None):
         scroll_loc_prev = -5
         if slow:
-            scroll_dist = 300
+            scroll_dist = int(random.uniform(200, 350))
         else:
-            scroll_dist = 500
+            scroll_dist = int(random.uniform(400, 600))
         while self.y_scroll_loc > scroll_loc_prev + 2:
             scroll_loc_prev = self.y_scroll_loc
             self.scroll(self.y_scroll_loc + scroll_dist)
@@ -313,3 +320,6 @@ class BotInterface:
             if limit is not None:
                 if self.y_scroll_loc >= limit:
                     break
+            scroll_dist = scroll_dist + int(random.uniform(-20, 20))
+            self.partial_mouse(self.x_mouse_loc + int(random.uniform(-7, 7)),
+                               self.y_mouse_loc + int(random.uniform(-7, 7)))

@@ -13,7 +13,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from datetime import datetime
-
+import re
+import shutil
 
 class SingleBot:
     IP = '192.168.1.19'
@@ -39,7 +40,7 @@ class SingleBot:
                  path_results,
                  path_searches,
                  user_agent,
-                 dir_cookie_jar='Data/cookies/',
+                 profile_dir,
                  nr_results=1,
                  visual=False,
                  existing=False,
@@ -49,10 +50,8 @@ class SingleBot:
         """
         :param port: string, access selenium docker image
         :param flag: string, flag indicates political orientation/nature of the bot
-        :param bot_id: string, 'name' of the single bot, consists of the swarm name
+        :param bot_id: string, 'ns2ame' of the single bot, consists of the swarm name
          and instance number
-        :param dir_cookie_jar: string, directory where single bot is to create or access a cookie jar
-            defaults to Data/cookies/
         :param dir_results: string, directory where the single bot stores its results
             defaults to Data/results/
         :param nr_results: int, nr. of results to store when conducting
@@ -66,7 +65,6 @@ class SingleBot:
         self.port = port
         self.flag = flag
         self.bot_id = bot_id
-        self.dir_cookie_jar = dir_cookie_jar
         self.path_results = path_results
         self.path_searches = path_searches
         self.nr_results = nr_results
@@ -77,20 +75,22 @@ class SingleBot:
         self.existing_searches = pd.DataFrame(
             columns=SingleBot.COL_NAMES_SEARCHES)
         # initialize empty driver options
-        self.driver_options = None
+        self.driver_options = webdriver.FirefoxOptions()
         # initialize empty driver
         self.driver = None
         self.interface = None
-        # initialize path to bot specific cookie jar from jar directory
-        self.cookie_jar = self.dir_cookie_jar + self.bot_id + '.json'
+        # initialize path to bot specific cookie jar from jar directorys
 
         # set desired capabilitiies
-        self._profile = webdriver.FirefoxProfile()
-        self._profile.set_preference("general.useragent.override", user_agent)
 
         self._firefox_capabilities = DesiredCapabilities.FIREFOX.copy()
-        self._firefox_options = webdriver.FirefoxOptions()
-
+        self._firefox_profile = webdriver.FirefoxProfile()
+        self._profile_path = profile_dir['Host'] + self.bot_id
+        self._interim_path = profile_dir['Host'] + 'interim'
+        self._profile_path_sel = profile_dir['Selenium'] + self.bot_id
+        self._profile_dir_sel = profile_dir['Selenium']
+        self._profile_dir = profile_dir['Host']
+        self._firefox_options = None
         if self._proxy is not None:
             self._firefox_capabilities['proxy'] = {
                 "proxyType": "MANUAL",
@@ -104,7 +104,14 @@ class SingleBot:
         self._IP = SingleBot.IP
         # If old cookies and results are not to be reused, run create.
         if not existing:
+            self._firefox_options = webdriver.FirefoxOptions()
+            self._firefox_options.set_preference("media.autoplay.default", 1)
+            self._firefox_options.set_preference("media.autoplay.allow-muted", 'false')
+            profile = webdriver.FirefoxProfile()
+            profile.set_preference("general.useragent.override", user_agent)
+            self._firefox_options.profile = profile
             self.create(accept_cookie)
+
 
     def __str__(self):
         return f'BotID: {self.bot_id}, {self.flag}'
@@ -133,37 +140,6 @@ class SingleBot:
     def flag(self, new_flag):
         self._flag = new_flag
 
-    """
-    cookie jar getter and setter, raises value error if non valid  directory
-    is attempted to be set
-    """
-
-    @property
-    def dir_cookie_jar(self):
-        return self._dir_cookie_jar
-
-    @dir_cookie_jar.setter
-    def dir_cookie_jar(self, path):
-        if os.path.isdir(path):
-            self._dir_cookie_jar = path
-        else:
-            raise ValueError(f'{path} is not a valid directory')
-
-    """
-    cookie_jar directory getter and setter, raises value error if non valid directory
-    is set
-    """
-
-    @property
-    def cookie_jar(self):
-        return self._cookie_jar
-
-    @cookie_jar.setter
-    def cookie_jar(self, path):
-        self._cookie_jar = path
-        if not os.path.exists(path):
-            with open(path, 'w') as create:
-                pass
 
     """results path getter and setter, creates file if none exists in location 
     of passed path. (allways use with known good directories)
@@ -276,23 +252,24 @@ class SingleBot:
             Does not load existing cookies! only use when cookies
              are to be re-set
         """
-
         if self.visual:
             self.driver = webdriver.Firefox(
                 desired_capabilities=self._firefox_capabilities,
-                firefox_profile=self._profile
-                )
+                options=self._firefox_options
+            )
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities,
-                browser_profile=self._profile
+                options=self._firefox_options
             )
-        self.driver.implicitly_wait(120)
-        self.interface = BI.BotInterface(self.driver)
-        self.interface.set_cursor_loc()
+            self.driver.maximize_window()
+
+        self.driver.implicitly_wait(150)
         Util.connection_handler(self.driver, "https://www.google.com/")
         if accept_cookie:
+            self.interface = BI.BotInterface(self.driver)
+            self.interface.set_cursor_loc()
             self.accept_cookies()
         time.sleep(2)
         self.shutdown()
@@ -305,29 +282,25 @@ class SingleBot:
                     else False
         accesses webdriver, acceses dead google page and loads cookies from jar.
         """
+        self._firefox_profile = webdriver.FirefoxProfile()
+        self._firefox_options = webdriver.FirefoxOptions()
+        self._firefox_profile.profile_dir = self._profile_path_sel
+        self._firefox_options.profile = self._firefox_profile
+
         if self.visual:
             self.driver = webdriver.Firefox(
                 desired_capabilities=self._firefox_capabilities,
+                options=self._firefox_options
                 )
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities,
+                options=self._firefox_options
                 )
-
-        if issue := Util.connection_handler(self.driver,
-                "https://www.google.com/") is None:
-            time.sleep(2)
-            with open(self.cookie_jar, 'r') as jar:
-                cookie = json.load(jar)
-            time.sleep(1)
-            for crumble in cookie:
-                self.driver.add_cookie(crumble)
-            self.interface = BI.BotInterface(self.driver)
-            self.interface.set_cursor_loc()
-            return None
-        else:
-            return issue
+        self.interface = BI.BotInterface(self.driver)
+        self.interface.set_cursor_loc()
+        return None
 
     def match_domain(self, target_domain, class_name='rc'):
         """
@@ -419,10 +392,7 @@ class SingleBot:
                     int(where['width'] - 1) // 3))
             y_loc = int(where['y']) + random.randint(1,
                                                      int(where['height'] - 1))
-            # store cookies before leaving domain
-            cookie = self.driver.get_cookies()
-            with open(self.cookie_jar, 'w') as jar:
-                json.dump(cookie, jar)
+
 
             self.interface.mouse_to(x_loc, y_loc)
             self.interface.click()
@@ -438,11 +408,16 @@ class SingleBot:
         """
         If current domain is google store cookies from driver in cookie jar and 'close' driver
         """
-        if Util.extract_domain(self.driver.current_url) == 'google.com':
-            cookie = self.driver.get_cookies()
-            with open(self.cookie_jar, 'w') as jar:
-                json.dump(cookie, jar)
-        self.driver.close()
+
+        path = self.driver.capabilities['moz:profile']
+        path = path.replace(self._profile_dir_sel, self._profile_dir)
+        if os.path.isdir(self._interim_path):
+            shutil.rmtree(self._interim_path)
+        shutil.copytree(path, self._interim_path, ignore = shutil.ignore_patterns('*lock'))
+        self.driver.quit()
+        if os.path.isdir(self._profile_path):
+            shutil.rmtree(self._profile_path)
+        shutil.copytree(self._interim_path, self._profile_path)
 
     def download_results(self, term, class_name='rc'):
         """

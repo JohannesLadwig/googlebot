@@ -7,7 +7,8 @@ class SeleniumDocker:
     def __init__(self, port, name, timezone='UTC', proxy_domain=None,
                  proxy_user=None,
                  proxy_password=None, memory='2g',
-                 image='selenium/standalone-firefox'):
+                 image='selenium/standalone-firefox',
+                 shared_folder=None):
 
         self._port = port
         self._name = name
@@ -19,8 +20,9 @@ class SeleniumDocker:
         self._proxy_password = proxy_password
         self._memory = memory
         self._image = image
+        self._shared_folder = shared_folder
         self.generate_proxy_config()
-        self._run_command = f'docker run -p {self._port}:4444 -d --shm-size={self._memory} {self.generate_proxy_config()} --env TZ={self.timezone} --name {self._name} {self._image}'
+        self._run_command = f'docker run -p {self._port}:4444 -d --shm-size={self._memory} {self.generate_proxy_config()} -v {self._shared_folder} --env TZ={self.timezone} --name {self._name} {self._image}'
         self.create_container()
 
     @property
