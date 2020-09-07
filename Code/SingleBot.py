@@ -16,8 +16,9 @@ from datetime import datetime
 import re
 import shutil
 
+
 class SingleBot:
-    IP = '192.168.1.19'
+    IP = 'localhost'
     COL_NAMES = ('title',
                  'search_term',
                  'rank',
@@ -37,6 +38,7 @@ class SingleBot:
                  port,
                  flag,
                  bot_id,
+                 swarm_name,
                  path_results,
                  path_searches,
                  user_agent,
@@ -45,7 +47,7 @@ class SingleBot:
                  visual=False,
                  existing=False,
                  proxy=None,
-                 accept_cookie=False
+                 accept_cookie=False,
                  ):
         """
         :param port: string, access selenium docker image
@@ -65,6 +67,7 @@ class SingleBot:
         self.port = port
         self.flag = flag
         self.bot_id = bot_id
+        self._swarm_name = swarm_name
         self.path_results = path_results
         self.path_searches = path_searches
         self.nr_results = nr_results
@@ -82,14 +85,10 @@ class SingleBot:
         # initialize path to bot specific cookie jar from jar directorys
 
         # set desired capabilitiies
-
+        self._profile_dir = profile_dir
+        self._profile_path = None
         self._firefox_capabilities = DesiredCapabilities.FIREFOX.copy()
         self._firefox_profile = webdriver.FirefoxProfile()
-        self._profile_path = profile_dir['Host'] + self.bot_id
-        self._interim_path = profile_dir['Host'] + 'interim'
-        self._profile_path_sel = profile_dir['Selenium'] + self.bot_id
-        self._profile_dir_sel = profile_dir['Selenium']
-        self._profile_dir = profile_dir['Host']
         self._firefox_options = None
         if self._proxy is not None:
             self._firefox_capabilities['proxy'] = {
@@ -104,13 +103,18 @@ class SingleBot:
         self._IP = SingleBot.IP
         # If old cookies and results are not to be reused, run create.
         if not existing:
+            if os.path.isdir(f'{self._profile_dir["Host"]}/{self.bot_id}'):
+                shutil.rmtree(f'{self._profile_dir["Host"]}/{self.bot_id}')
             self._firefox_options = webdriver.FirefoxOptions()
             self._firefox_options.set_preference("media.autoplay.default", 1)
-            self._firefox_options.set_preference("media.autoplay.allow-muted", 'false')
+            self._firefox_options.set_preference("media.autoplay.allow-muted",
+                                                 'false')
             profile = webdriver.FirefoxProfile()
             profile.set_preference("general.useragent.override", user_agent)
             self._firefox_options.profile = profile
             self.create(accept_cookie)
+        else:
+            self._profile_path = f'{self._profile_dir["Selenium"]}/{self.bot_id}'
 
 
     def __str__(self):
@@ -139,7 +143,6 @@ class SingleBot:
     @flag.setter
     def flag(self, new_flag):
         self._flag = new_flag
-
 
     """results path getter and setter, creates file if none exists in location 
     of passed path. (allways use with known good directories)
@@ -221,7 +224,6 @@ class SingleBot:
         self.existing_searches = pd.DataFrame(
             columns=SingleBot.COL_NAMES_SEARCHES)
 
-
     def accept_cookies(self):
         """
         :return: void
@@ -265,8 +267,9 @@ class SingleBot:
             )
             self.driver.maximize_window()
 
-        self.driver.implicitly_wait(150)
+        self.driver.implicitly_wait(30)
         Util.connection_handler(self.driver, "https://www.google.com/")
+        time.sleep(3)
         if accept_cookie:
             self.interface = BI.BotInterface(self.driver)
             self.interface.set_cursor_loc()
@@ -284,20 +287,19 @@ class SingleBot:
         """
         self._firefox_profile = webdriver.FirefoxProfile()
         self._firefox_options = webdriver.FirefoxOptions()
-        self._firefox_profile.profile_dir = self._profile_path_sel
+        self._firefox_profile.profile_dir = self._profile_path
         self._firefox_options.profile = self._firefox_profile
-
         if self.visual:
             self.driver = webdriver.Firefox(
                 desired_capabilities=self._firefox_capabilities,
                 options=self._firefox_options
-                )
+            )
         else:
             self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities,
                 options=self._firefox_options
-                )
+            )
         self.interface = BI.BotInterface(self.driver)
         self.interface.set_cursor_loc()
         return None
@@ -311,7 +313,6 @@ class SingleBot:
         expects driver to have accessed google and searched term_params.
         """
         results_in = self.driver.find_elements_by_class_name(class_name)
-
         for result in results_in:
             if len(result.text) > 0:
                 if Util.result_domain_match(result.text, target_domain):
@@ -364,7 +365,7 @@ class SingleBot:
 
     def select_result(self, term_params):
 
-        time.sleep(random.randint(1, 3))
+        time.sleep(random.uniform(1, 3))
         max_pages = 3
         page = 1
         rank = 1
@@ -379,7 +380,7 @@ class SingleBot:
                 self.next_page()
                 page += 1
         if result is not None:
-            button = result.find_element_by_class_name('r')
+            button = result.find_element_by_class_name('LC20lb.DKV0Md')
             where = button.rect
             if where[
                 'y'] > self.interface.height - 100 - self.interface.y_scroll_loc:
@@ -389,16 +390,21 @@ class SingleBot:
                 where['y'] -= self.interface.y_scroll_loc
 
             x_loc = int(where['x']) + random.randint(1, (
-                    int(where['width'] - 1) // 3))
+                    int(where['width'] - 1) // 2))
             y_loc = int(where['y']) + random.randint(1,
                                                      int(where['height'] - 1))
 
-
             self.interface.mouse_to(x_loc, y_loc)
             self.interface.click()
-            self.interface.y_scroll_loc = 0
-            time.sleep(3)
-            self.interface.scroll_to_bottom(slow=True, limit=5000)
+            self.interface.y_scroll_loc = self.driver.execute_script(
+                'return window.pageYOffset;')
+            time.sleep(5)
+            try:
+                self.interface.scroll_to_bottom(slow=True, limit=3500)
+            except:
+                print(term_params)
+                print(self.driver.current_url)
+                return 'failure'
             return 'success'
         else:
             return 'failure'
@@ -410,14 +416,45 @@ class SingleBot:
         """
 
         path = self.driver.capabilities['moz:profile']
-        path = path.replace(self._profile_dir_sel, self._profile_dir)
-        if os.path.isdir(self._interim_path):
-            shutil.rmtree(self._interim_path)
-        shutil.copytree(path, self._interim_path, ignore = shutil.ignore_patterns('*lock'))
-        self.driver.quit()
-        if os.path.isdir(self._profile_path):
-            shutil.rmtree(self._profile_path)
-        shutil.copytree(self._interim_path, self._profile_path)
+        self.driver.get("https://amiunique.org/fp")
+        time.sleep(5)
+        e = self.driver.find_element_by_xpath('//*[@id="user-agent-value"]')
+        print(self.bot_id)
+        print(e.text)
+        self.driver.get('https://this-page-intentionally-left-blank.org')
+        self._firefox_options = None
+        self._firefox_profile = None
+        if not self.visual:
+            if os.path.isfile(f'{self._profile_dir["Host"]}/{self.bot_id}/cookies.sqlite'):
+                os.system(
+                    f'docker exec container_{self._swarm_name} rm -r {self._profile_dir["Selenium"]}/{self.bot_id}')
+
+            os.system(
+                f'docker exec container_{self._swarm_name} cp --remove-destination -a {path} {self._profile_dir["Selenium"]}/{self.bot_id}')
+            time.sleep(2)
+            self.driver.quit()
+            if os.path.lexists(lock:=f'{self._profile_dir["Host"]}/{self.bot_id}/lock'):
+                os.unlink(lock)
+                os.unlink(f'{self._profile_dir["Host"]}/{self.bot_id}/.parentlock')
+            self._profile_path = f'{self._profile_dir["Host"]}/{self.bot_id}'
+
+        else:
+            if not os.path.isdir(f'{self._profile_dir["Host"]}/{self.bot_id}'):
+                shutil.copytree(path, f'{self._profile_dir["Host"]}/{self.bot_id}')
+                time.sleep(2)
+                self.driver.quit()
+            else:
+                shutil.copytree(path, f'{self._profile_dir["Host"]}/interim_{self.bot_id}')
+                time.sleep(2)
+                self.driver.quit()
+                if os.path.isdir(f'{self._profile_dir["Host"]}/{self.bot_id}'):
+                    shutil.rmtree(f'{self._profile_dir["Host"]}/{self.bot_id}')
+                shutil.copytree(f'{self._profile_dir["Host"]}/interim_{self.bot_id}', f'{self._profile_dir["Host"]}/{self.bot_id}')
+                shutil.rmtree(f'{self._profile_dir["Host"]}/interim_{self.bot_id}')
+
+            self._profile_path = f'{self._profile_dir["Host"]}/{self.bot_id}'
+
+        return self._profile_path
 
     def download_results(self, term, class_name='rc'):
         """
@@ -463,7 +500,7 @@ class SingleBot:
         specifications.
     """
 
-    def search(self, term_params, store=False, save_search = True):
+    def search(self, term_params, store=False, save_search=True):
         """
         :param term_params: str, phrase or term to google
         :param store: boolean, when True, self.nr_results will be stored
@@ -481,7 +518,8 @@ class SingleBot:
                 words = words[0:nr]
                 term_params['term'] = ' '.join(words)
         # open google, if sucessfull proceed
-        if issue := Util.connection_handler(self.driver, "https://www.google.com/") is None:
+        if issue := Util.connection_handler(self.driver,
+                                            "https://www.google.com/") is None:
             search_field = self.driver.find_element_by_name("q")
             search_field.clear()
             time.sleep(d0 := r.uniform(0.5, 1.5))
@@ -491,32 +529,33 @@ class SingleBot:
             # checks if results will load
             nr_available = 0
             try:
-                e = WebDriverWait(self.driver, 180).until(
-                    ec.presence_of_element_located((By.CLASS_NAME, 'WE0UJf')))
-                nr_available = int(re.search('\\b[0-9]+', e.text).group(0))
+                WebDriverWait(self.driver, 10).until(
+                    ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
+                )
             except:
                 try:
-                    WebDriverWait(self.driver, 180).until(
-                        ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
-                    )
-                    no_nr = True
+                    e = WebDriverWait(self.driver, 5).until(
+                        ec.presence_of_element_located(
+                            (By.CLASS_NAME, 'WE0UJf')))
+                    nr_available = int(re.search('\\b[0-9]+', e.text).group(0))
                 except:
-                    issue = 'results_load/search'
-                    img = self.driver.get_screenshot_as_file(
-                        f'Data/log_files/swarms/img{self.bot_id}.png')
-
-                    return issue
-            if (nr_available > 0) or no_nr:
-                try:
-                    WebDriverWait(self.driver, 180).until(
-                        ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
-                    )
-                except:
-                    issue = 'results_load/search'
-                    img = self.driver.get_screenshot_as_file(
-                        f'Data/log_files/swarms/img{self.bot_id}.png')
-
-                    return issue
+                    try:
+                        WebDriverWait(self.driver, 180).until(
+                            ec.presence_of_element_located(
+                                (By.CLASS_NAME, 'rc'))
+                        )
+                    except:
+                        try:
+                            e = WebDriverWait(self.driver, 5).until(
+                                ec.presence_of_element_located(
+                                    (By.CLASS_NAME, 'WE0UJf')))
+                            nr_available = int(
+                                re.search('\\b[0-9]+', e.text).group(0))
+                        except:
+                            issue = 'results_load/search'
+                            img = self.driver.get_screenshot_as_file(
+                                f'Data/log_files/swarms/img{self.bot_id}.png')
+                            return issue
 
             # let more results load and download if needed
             time.sleep(d2 := r.uniform(1.5, 2.5))
@@ -533,4 +572,3 @@ class SingleBot:
             return None
         else:
             return issue + '/search'
-

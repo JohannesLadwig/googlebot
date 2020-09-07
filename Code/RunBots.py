@@ -1,4 +1,5 @@
 from Code.Swarm import Swarm
+import os
 import multiprocessing as mp
 import time
 from Code import gdelt_gkg as gkg, Utilities as Util, \
@@ -135,7 +136,7 @@ def execute(swarm, create=False):
 
 
 def visual(nr_vis, t_delay, nr_searches, nr_experiment, proxy):
-    bernd = Swarm(port=4444,
+    bernd = Swarm(port=4460,
                   nr_inst=nr_vis,
                   flag='right',
                   nr_searches_creation=nr_searches,
@@ -151,7 +152,7 @@ def visual(nr_vis, t_delay, nr_searches, nr_experiment, proxy):
                   night_search=True,
                   dir_results='Data/results/',
                   dir_log='Data/log_files/swarms/',
-                  visual=True)
+                  visual=False)
     bernd.launch(exist=False)
     execute(bernd)
 
@@ -163,6 +164,7 @@ def launch_control(all_bots, process):
     launch = False
     creation_complete = searches_remaining('c', all_bots) == 0
     if creation_complete or (process == 'e'):
+        launch = True
         launch = True
     return launch
 

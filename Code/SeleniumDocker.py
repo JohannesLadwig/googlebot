@@ -3,12 +3,13 @@ import json
 
 
 class SeleniumDocker:
-    # docker run -p 4445:4444 -d --shm-size=2g  --name bot_2 selenium/standalone-firefox
+    # docker run -p 4445:4444 -d --shm-size=3g  --name bot_2 selenium/standalone-firefox
     def __init__(self, port, name, timezone='UTC', proxy_domain=None,
                  proxy_user=None,
                  proxy_password=None, memory='2g',
                  image='selenium/standalone-firefox',
-                 shared_folder=None):
+                 bind_config=None,
+                 vol_config=None):
 
         self._port = port
         self._name = name
@@ -20,9 +21,10 @@ class SeleniumDocker:
         self._proxy_password = proxy_password
         self._memory = memory
         self._image = image
-        self._shared_folder = shared_folder
+        self._mount_1 = self.bind_mount(bind_config)
+        # self._mount_2 = self.vol_mount(vol_config)
         self.generate_proxy_config()
-        self._run_command = f'docker run -p {self._port}:4444 -d --shm-size={self._memory} {self.generate_proxy_config()} -v {self._shared_folder} --env TZ={self.timezone} --name {self._name} {self._image}'
+        self._run_command = f'docker run -p {self._port}:4444 -d --shm-size={self._memory} {self.generate_proxy_config()} {self._mount_1}  --env TZ={self.timezone} --name {self._name} {self._image}'
         self.create_container()
 
     @property
@@ -35,12 +37,21 @@ class SeleniumDocker:
             valid_tz = json.load(tz_file)
         if zone_name not in valid_tz:
             raise ValueError(
-                f'{self.zone_name} is not a valid timezone. See Data/diverse/timezones.json')
+                f'{zone_name} is not a valid timezone. See Data/diverse/timezones.json')
         else:
             self._timezone = zone_name
 
     def __str__(self):
         return str(self._run_command)
+
+    def vol_mount(self, directories):
+        os.system(f'docker volume rm {directories[0]}')
+        return f'--mount source={directories[0]},target={directories[1]}'
+
+    def bind_mount(self, directories):
+        if not os.path.isdir(directories[0]):
+            os.makedirs(directories[0])
+        return f'--mount type=bind,source={directories[0]},target={directories[1]}'
 
     def generate_proxy_config(self):
         if not self._proxy:

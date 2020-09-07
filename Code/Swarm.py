@@ -89,10 +89,11 @@ class Swarm:
         self.log = None
         self.handle_log('r')
 
-        self._profile_dir = {'Host':f'/Users/johannes/Dropbox/thesis_code/googlebot/Data/profiles/swarm_{self.swarm_name}/',
-                             'Selenium': f'/Users/johannes/Dropbox/thesis_code/googlebot/Data/profiles/swarm_{self.swarm_name}/'}
+        self._profile_dir = {'Host': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
+                             'Selenium': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
+                             }
         if not visual:
-            self._profile_dir['Selenium'] = '/tmp/'
+            self._profile_dir['Selenium'] = '/home/profiles'
     @property
     def port(self):
         return self._port
@@ -264,7 +265,8 @@ class Swarm:
                          'nr_exp': 0,
                          'exp_progress': 0,
                          'time': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                         'profile': {}}
+                         'profile': {},
+                         'profile_path':{}}
             with open(self._path_log, 'w') as log_file:
                 json.dump(empty_log, log_file)
             del log_file
@@ -439,13 +441,15 @@ class Swarm:
     def launch(self, exist):
         selenium_proxy = self.launch_proxy()
         if not self.visual:
-            shared_folder = f'{self._profile_dir["Host"]}:{self._profile_dir["Selenium"]}'
+            shared_folder_1 = [self._profile_dir["Host"], self._profile_dir["Selenium"]]
+
             container = SeleniumDocker(self.port,
                                        'container_' + self.swarm_name,
                                        self.timezone,
-                                       shared_folder=shared_folder)
+                                       bind_config=shared_folder_1,
+                                       )
             time.sleep(5)
-        with open('Data/diverse/profile.json') as profiles_in:
+        with open('Data/diverse/agents.json') as profiles_in:
             profiles = json.load(profiles_in)
 
         for i in range(self.nr_inst):
@@ -458,6 +462,7 @@ class Swarm:
             instance = SingleBot(self.port,
                                  'dem',
                                  bot_id=bot_id,
+                                 swarm_name = self.swarm_name,
                                  path_results=self.path_results,
                                  path_searches=self.path_searches,
                                  user_agent=profile,
@@ -518,7 +523,8 @@ class Swarm:
             issue = bot.launch()
             if issue is None:
                 issue = bot.search(term, store)
-            bot.shutdown()
+            profile_path = bot.shutdown()
+            self.log['profile_path'][bot_id] = profile_path
             success = issue is None
             if success:
                 self.log[step][bot_id] = self.log[step][bot_id] + 1
@@ -526,6 +532,8 @@ class Swarm:
                 self.log[f'incomplete_{step}'] = True
                 self.log['issue'] = issue
                 self.handle_log('w')
+                print(self.swarm_name)
+                print(self.log['profile'][bot_id])
                 break
             self.handle_log('w')
             time.sleep(random.uniform(2 * wait//3, wait))
