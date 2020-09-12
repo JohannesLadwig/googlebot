@@ -15,7 +15,7 @@ from pytz import reference
 TITLE_LOC = {'Breitbart': 0, 'Slate': 0, 'AlterNet': 0, 'TheBlaze': 0}
 
 
-def natural_typing_in_field(field, string, min_delay=0.18, max_delay=0.22,
+def natural_typing_in_field(field, string, keep_errors=True, min_delay=0.18, max_delay=0.22,
                             p_error=0.03):
     with open("Data/diverse/adjacent_letters.json", 'r') as f:
         letters_dict = json.load(f)
@@ -37,7 +37,8 @@ def natural_typing_in_field(field, string, min_delay=0.18, max_delay=0.22,
                 true_following += 1
             delay = r.uniform(min_delay, max_delay)
             time.sleep(delay)
-            keep_mistake = r.choices([True, False], [0.22, 0.78])[0]
+
+            keep_mistake = (r.choices([True, False], [0.22, 0.78])[0]) and keep_errors
             while true_following > 0 and not keep_mistake:
                 delay = r.uniform(min_delay, max_delay)
                 time.sleep(delay)
@@ -89,15 +90,19 @@ def clean_scrape(raw_text, source):
 
 
 def select_breitbart(raw_html):
-    return raw_html.find('a').get('title')
+    title = raw_html.find('a').get('title')
+
+    return title.strip()
 
 
 def select_the_blaze(raw_html):
-    return raw_html.get('aria-label')
+    title = raw_html.get('aria-label')
+    return title.strip()
 
 
 def select_slate(raw_html):
-    return raw_html.get_text()
+    title = raw_html.get_text()
+    return title.strip()
 
 
 def speech_bool(input_string):
@@ -110,15 +115,24 @@ def speech_bool(input_string):
 
 
 def extract_domain(url):
-    split = tldextract.extract(url)
+    try:
+        split = tldextract.extract(url)
+    except TypeError:
+        raise TypeError(f'{url} is strange')
     domain = split.domain + '.' + split.suffix
     return domain
 
 
 def result_domain_match(result, target_domain):
     url = clean_result(result)[1]
-    domain = extract_domain(url)
-    is_match = domain == target_domain
+    if url is not None:
+        domain = extract_domain(url)
+        is_match = domain == target_domain
+    else:
+        print(result)
+        print(target_domain)
+        is_match = False
+        return None
     return is_match
 
 
@@ -170,7 +184,7 @@ def get_timezone():
     return tz
 
 
-def connection_handler(driver, url, wait=30, max_tries=5):
+def connection_handler(driver, url, wait=30, max_tries=1):
     """
     :param driver: selenium driver object
     :param url: str, url to some website
@@ -202,7 +216,7 @@ def connection_handler(driver, url, wait=30, max_tries=5):
             else:
                 issue = 'webdriver'
         retries += 1
-    time.sleep(300)
+    time.sleep(2)
     try:
         driver.get(url)
         issue = None

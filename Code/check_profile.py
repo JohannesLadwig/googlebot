@@ -8,12 +8,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 import random as r
 
-with open('/Users/johannes/Dropbox/thesis_code/googlebot/Data/diverse/profile.json') as profiles_in:
+with open('/Users/johannes/Uni/HSG/googlebot/Data/diverse/agents.json') as profiles_in:
     profiles = json.load(profiles_in)
-with open('/Users/johannes/Dropbox/thesis_code/googlebot/Data/diverse/agents.json') as fl:
-    valid_agents = json.load(fl)
 
-for agent in profiles[500:]:
+valid_agents = []
+
+for agent in profiles[0:500]:
     options = webdriver.FirefoxOptions()
     profile = webdriver.FirefoxProfile()
     profile.set_preference("general.useragent.override", agent)
@@ -40,7 +40,7 @@ for agent in profiles[500:]:
         continue
     time.sleep(r.uniform(3,10))
     valid_agents.append(agent)
-    with open('/Users/johannes/Dropbox/thesis_code/googlebot/Data/diverse/agents.json', 'w') as fl:
+    with open('/Users/johannes/Uni/HSG/googlebot/Data/diverse/agents_2.0.json', 'w') as fl:
         json.dump(valid_agents, fl)
 
 

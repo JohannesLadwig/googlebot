@@ -120,8 +120,11 @@ def set_search_param(process, all_bots):
 
 def restart_search_numbers(swarms):
     for swarm in swarms:
-        swarm.nr_searches_creation = max(0, swarm.nr_searches_creation - swarm.log['nr_create'])
-        swarm.nr_searches_exp = max(0, swarm.nr_searches_exp - swarm.log['nr_exp'])
+        swarm.nr_searches_creation = max(0,
+                                         swarm.nr_searches_creation - swarm.log[
+                                             'nr_create'])
+        swarm.nr_searches_exp = max(0,
+                                    swarm.nr_searches_exp - swarm.log['nr_exp'])
         swarm.exp_progress = swarm.log['exp_progress']
 
 
@@ -152,13 +155,15 @@ def visual(nr_vis, t_delay, nr_searches, nr_experiment, proxy):
                   night_search=True,
                   dir_results='Data/results/',
                   dir_log='Data/log_files/swarms/',
-                  visual=False)
+                  visual=True)
     bernd.launch(exist=False)
     execute(bernd)
+
 
 def create(swarm):
     swarm.launch(exist=False)
     return swarm
+
 
 def launch_control(all_bots, process):
     launch = False
@@ -236,10 +241,12 @@ if __name__ == "__main__":
                     create_only = False
 
                 if (
-                        7 > Util.get_time(timezone) or Util.get_time(timezone) >= 22) and not night_search:
+                        7 > Util.get_time(timezone) or Util.get_time(
+                    timezone) >= 22) and not night_search:
                     bots_asleep = True
                     print('Its night, bots are asleep!')
-                while (7 > Util.get_time(timezone) or Util.get_time(timezone) >= 22) and not night_search:
+                while (7 > Util.get_time(timezone) or Util.get_time(
+                        timezone) >= 22) and not night_search:
                     time.sleep(300)
 
                 if bots_asleep and not is_exp:

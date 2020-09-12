@@ -6,7 +6,7 @@ class SeleniumDocker:
     # docker run -p 4445:4444 -d --shm-size=3g  --name bot_2 selenium/standalone-firefox
     def __init__(self, port, name, timezone='UTC', proxy_domain=None,
                  proxy_user=None,
-                 proxy_password=None, memory='2g',
+                 proxy_password=None, memory='3g',
                  image='selenium/standalone-firefox',
                  bind_config=None,
                  vol_config=None):

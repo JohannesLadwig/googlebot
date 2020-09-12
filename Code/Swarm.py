@@ -449,7 +449,7 @@ class Swarm:
                                        bind_config=shared_folder_1,
                                        )
             time.sleep(5)
-        with open('Data/diverse/agents.json') as profiles_in:
+        with open('Data/diverse/agents_3.json') as profiles_in:
             profiles = json.load(profiles_in)
 
         for i in range(self.nr_inst):
@@ -520,9 +520,16 @@ class Swarm:
 
         for bot_id, term in zip(bot_subset, terms):
             bot = self.instances[bot_id]
-            issue = bot.launch()
+            issue = ""
+            retries = 0
+            while issue is not None and retries < 1:
+                issue = bot.launch()
+                time.sleep(15)
+                retries += 1
             if issue is None:
-                issue = bot.search(term, store)
+                try: issue = bot.search(term, store)
+                except: print(bot_id)
+
             profile_path = bot.shutdown()
             self.log['profile_path'][bot_id] = profile_path
             success = issue is None
@@ -553,7 +560,7 @@ class Swarm:
             time_elapsed, completed = self.search(terms, store=False)
 
             if not completed:
-                print('Creation searches could no longer be conducted')
+                print(f'Creation searches could no longer be conducted {self.swarm_name}')
                 break
             self.nr_searches_creation -= 1
             self.handle_log('w')

@@ -58,6 +58,9 @@ class BotInterface:
 
     @y_scroll_loc.setter
     def y_scroll_loc(self, y):
+        if not (type(y) is int or type(y) is float):
+            y = 0
+        if y < 0: y = 0
         self._y_scroll_loc = y
 
     @property
@@ -260,6 +263,8 @@ class BotInterface:
             self.driver.execute_script(f'window.scrollTo(0,{y_next})')
             self.y_scroll_loc = self.driver.execute_script(
                 'return window.pageYOffset;')
+            if self.y_scroll_loc is None:
+                self.y_scroll_loc = 0
             if t0 > 0:
                 v += a0
                 t0 -= 1

@@ -88,6 +88,7 @@ class SingleBot:
         self._profile_dir = profile_dir
         self._profile_path = None
         self._firefox_capabilities = DesiredCapabilities.FIREFOX.copy()
+
         self._firefox_profile = webdriver.FirefoxProfile()
         self._firefox_options = None
         if self._proxy is not None:
@@ -106,6 +107,8 @@ class SingleBot:
             if os.path.isdir(f'{self._profile_dir["Host"]}/{self.bot_id}'):
                 shutil.rmtree(f'{self._profile_dir["Host"]}/{self.bot_id}')
             self._firefox_options = webdriver.FirefoxOptions()
+            self._firefox_options.set_preference("moz:webdriverClick", 'true')
+
             self._firefox_options.set_preference("media.autoplay.default", 1)
             self._firefox_options.set_preference("media.autoplay.allow-muted",
                                                  'false')
@@ -285,6 +288,7 @@ class SingleBot:
                     else False
         accesses webdriver, acceses dead google page and loads cookies from jar.
         """
+        issue = None
         self._firefox_profile = webdriver.FirefoxProfile()
         self._firefox_options = webdriver.FirefoxOptions()
         self._firefox_profile.profile_dir = self._profile_path
@@ -295,14 +299,17 @@ class SingleBot:
                 options=self._firefox_options
             )
         else:
-            self.driver = webdriver.Remote(
+            try: self.driver = webdriver.Remote(
                 f'http://{self._IP}:{self.port}/wd/hub',
                 desired_capabilities=self._firefox_capabilities,
-                options=self._firefox_options
-            )
-        self.interface = BI.BotInterface(self.driver)
+                options=self._firefox_options)
+            except: issue = 'failed_launch'
+        time.sleep(5)
+
+        try: self.interface = BI.BotInterface(self.driver)
+        except: issue = 'failed_interface_connection'
         self.interface.set_cursor_loc()
-        return None
+        return issue
 
     def match_domain(self, target_domain, class_name='rc'):
         """
@@ -314,9 +321,13 @@ class SingleBot:
         """
         results_in = self.driver.find_elements_by_class_name(class_name)
         for result in results_in:
-            if len(result.text) > 0:
-                if Util.result_domain_match(result.text, target_domain):
+            if len(result.text) > 1:
+                if Util.result_domain_match(result.text, target_domain) is None:
+                    self.driver.get_screenshot_as_file(
+                                f'Data/log_files/swarms/img{self.bot_id}.png')
+                elif Util.result_domain_match(result.text, target_domain):
                     return result
+
 
         return None
 
@@ -339,7 +350,7 @@ class SingleBot:
 
     def next_page(self):
         try:
-            WebDriverWait(self.driver, 180).until(
+            WebDriverWait(self.driver, 10).until(
                 ec.presence_of_element_located((By.XPATH, '//*[@id="pnnext"]'))
             )
         except:
@@ -380,8 +391,13 @@ class SingleBot:
                 self.next_page()
                 page += 1
         if result is not None:
-            button = result.find_element_by_class_name('LC20lb.DKV0Md')
+            try: button = result.find_element_by_class_name('LC20lb.DKV0Md')
+            except:
+                print('values dont exist')
+                print(self.bot_id)
+                raise ValueError('doesnt exist')
             where = button.rect
+
             if where[
                 'y'] > self.interface.height - 100 - self.interface.y_scroll_loc:
                 goal = where['y'] - random.randint(self.interface.height // 3,
@@ -402,6 +418,7 @@ class SingleBot:
             try:
                 self.interface.scroll_to_bottom(slow=True, limit=3500)
             except:
+                print(self.bot_id)
                 print(term_params)
                 print(self.driver.current_url)
                 return 'failure'
@@ -414,16 +431,15 @@ class SingleBot:
         """
         If current domain is google store cookies from driver in cookie jar and 'close' driver
         """
-
+        window = self.driver.current_window_handle
+        self.driver.execute_script("window.open()")
+        self.driver.switch_to.window(window)
+        self.driver.close()
+        time.sleep(10)
         path = self.driver.capabilities['moz:profile']
-        self.driver.get("https://amiunique.org/fp")
-        time.sleep(5)
-        e = self.driver.find_element_by_xpath('//*[@id="user-agent-value"]')
-        print(self.bot_id)
-        print(e.text)
-        self.driver.get('https://this-page-intentionally-left-blank.org')
         self._firefox_options = None
         self._firefox_profile = None
+
         if not self.visual:
             if os.path.isfile(f'{self._profile_dir["Host"]}/{self.bot_id}/cookies.sqlite'):
                 os.system(
@@ -431,7 +447,7 @@ class SingleBot:
 
             os.system(
                 f'docker exec container_{self._swarm_name} cp --remove-destination -a {path} {self._profile_dir["Selenium"]}/{self.bot_id}')
-            time.sleep(2)
+
             self.driver.quit()
             if os.path.lexists(lock:=f'{self._profile_dir["Host"]}/{self.bot_id}/lock'):
                 os.unlink(lock)
@@ -523,16 +539,17 @@ class SingleBot:
             search_field = self.driver.find_element_by_name("q")
             search_field.clear()
             time.sleep(d0 := r.uniform(0.5, 1.5))
-            Util.natural_typing_in_field(search_field, term_params['term'])
+            Util.natural_typing_in_field(search_field, term_params['term'], keep_errors= not store)
             time.sleep(d1 := r.uniform(0.15, 0.5))
             search_field.send_keys(Keys.RETURN)
             # checks if results will load
             nr_available = 0
             try:
-                WebDriverWait(self.driver, 10).until(
+                WebDriverWait(self.driver, 5).until(
                     ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
                 )
             except:
+                search_field.send_keys(Keys.RETURN)
                 try:
                     e = WebDriverWait(self.driver, 5).until(
                         ec.presence_of_element_located(
@@ -560,9 +577,11 @@ class SingleBot:
             # let more results load and download if needed
             time.sleep(d2 := r.uniform(1.5, 2.5))
             if store:
+                time.sleep(d2 := r.uniform(1.5, 2.5))
                 self.download_results(term_params['term'])
 
             if term_params['choice_type'] != 'none':
+                time.sleep(d2 := r.uniform(1.5, 2.5))
                 selected = self.select_result(term_params)
             else:
                 selected = 'None'
