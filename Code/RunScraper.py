@@ -56,8 +56,8 @@ def news_circle():
     # Bernie.read_the_news()
     Elizabeth.read_the_news()
     Alexandria.read_the_news()
-    # Joe.read_the_news(20)
-    # Kamala.read_the_news()
+    Joe.read_the_news(20)
+    Kamala.read_the_news()
 
     today = pd.Timestamp(date.today())
 

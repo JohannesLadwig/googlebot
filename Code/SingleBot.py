@@ -12,6 +12,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
+from selenium.common import exceptions
 from datetime import datetime
 import re
 import shutil
@@ -118,7 +119,6 @@ class SingleBot:
             self.create(accept_cookie)
         else:
             self._profile_path = f'{self._profile_dir["Selenium"]}/{self.bot_id}'
-
 
     def __str__(self):
         return f'BotID: {self.bot_id}, {self.flag}'
@@ -323,18 +323,18 @@ class SingleBot:
         for result in results_in:
             if len(result.text) > 1:
                 if Util.result_domain_match(result.text, target_domain) is None:
+                    print(f'{self.bot_id} loaded at bottom issue')
                     self.driver.get_screenshot_as_file(
                                 f'Data/log_files/swarms/img{self.bot_id}.png')
+                    break
                 elif Util.result_domain_match(result.text, target_domain):
                     return result
-
-
         return None
 
     def match_rank(self, target_rank, rank=1, class_name='rc'):
         """
         :param rank: int rank across pages of first result on current page
-        :param target_rank: int, rank of desired choice
+        :param target_rank: int, rank of desired choices
         :param class_name: class name for text field to be stored
         :return: matched element
 
@@ -359,11 +359,12 @@ class SingleBot:
         next_button = self.driver.find_element_by_xpath('//*[@id="pnnext"]')
         where = next_button.rect
         where['y'] -= self.interface.y_scroll_loc
-        x_loc = int(where['x']) + random.randint(1, int(where['width'] - 1))
-        y_loc = int(where['y']) + random.randint(1, int(where['height'] - 1))
+        x_dev =random.randint(1, max(int(where['width'] - 1), 1))
+        y_dev = random.randint(1,max(int(where['height'] - 1),1))
+        x_loc = int(where['x']) + x_dev
+        y_loc = int(where['y']) + y_dev
         self.interface.mouse_to(x_loc, y_loc)
-        self.interface.click()
-        self.interface.y_scroll_loc = 0
+        self.interface.safe_click(next_button, x_dev, y_dev)
         time.sleep(3)
         try:
             WebDriverWait(self.driver, 180).until(
@@ -371,33 +372,48 @@ class SingleBot:
             )
         except:
             return False
-
+        y = self.interface.reset_scroll_loc()
+        self.interface.scroll_to_top(fast=True)
         return True
 
     def select_result(self, term_params):
 
         time.sleep(random.uniform(1, 3))
+        try:
+            e = self.driver.find_elements_by_class_name('WE0UJf')
+            nr_available = int(re.search('\\b[0-9]+', e.text).group(0))
+        except:
+            nr_available = 100
         max_pages = 3
         page = 1
         rank = 1
         result = None
         term, choice_type, choice_param, kind = term_params.values()
-        while page <= max_pages and result is None:
+        while page <= max_pages and (result is None):
+
+            if choice_type == 'domain':
+                self.interface.scroll_to_bottom(slow=True)
             if choice_type == 'domain':
                 result = self.match_domain(choice_param)
             elif choice_type == 'rank':
                 result, rank = self.match_rank(choice_param, rank)
-            if result is None:
+            if result is None and page < max_pages and nr_available > 8:
                 self.next_page()
                 page += 1
+            else:
+                break
         if result is not None:
             try: button = result.find_element_by_class_name('LC20lb.DKV0Md')
             except:
                 print('values dont exist')
+                img = self.driver.get_screenshot_as_file(
+                                f'Data/log_files/swarms/img{self.bot_id}.png')
                 print(self.bot_id)
-                raise ValueError('doesnt exist')
-            where = button.rect
 
+                return 'failure'
+            where = button.rect
+            if choice_type == 'domain':
+                self.interface.scroll_to_top(fast=True)
             if where[
                 'y'] > self.interface.height - 100 - self.interface.y_scroll_loc:
                 goal = where['y'] - random.randint(self.interface.height // 3,
@@ -405,13 +421,13 @@ class SingleBot:
                 self.interface.scroll(goal + self.interface.y_scroll_loc)
                 where['y'] -= self.interface.y_scroll_loc
 
-            x_loc = int(where['x']) + random.randint(1, (
-                    int(where['width'] - 1) // 2))
-            y_loc = int(where['y']) + random.randint(1,
-                                                     int(where['height'] - 1))
+            x_dev = random.randint(1, (int(where['width'] - 1) // 2))
+            x_loc = int(where['x']) + x_dev
+            y_dev = random.randint(1, int(where['height'] - 1))
+            y_loc = int(where['y']) + y_dev
 
             self.interface.mouse_to(x_loc, y_loc)
-            self.interface.click()
+            self.interface.safe_click(button, x_dev, y_dev)
             self.interface.y_scroll_loc = self.driver.execute_script(
                 'return window.pageYOffset;')
             time.sleep(5)
@@ -419,6 +435,7 @@ class SingleBot:
                 self.interface.scroll_to_bottom(slow=True, limit=3500)
             except:
                 print(self.bot_id)
+                print('failure on scroll to bottom')
                 print(term_params)
                 print(self.driver.current_url)
                 return 'failure'
@@ -475,7 +492,7 @@ class SingleBot:
     def download_results(self, term, class_name='rc'):
         """
         :param class_name: class name for text field to be stored
-        :param term_params: string, a phrase or word  that has  been searched
+        :param term: string, a phrase or word  that has  been searched
         :return:
 
         expects driver to have accessed google and searched term_params.
@@ -535,13 +552,27 @@ class SingleBot:
                 term_params['term'] = ' '.join(words)
         # open google, if sucessfull proceed
         if issue := Util.connection_handler(self.driver,
-                                            "https://www.google.com/") is None:
-            search_field = self.driver.find_element_by_name("q")
+                              "https://www.google.com/") is None:
+            try:
+                search_field = self.driver.find_element_by_name("q")
+            except exceptions.NoSuchElementException:
+                self.driver.refresh()
+            try:
+                search_field = self.driver.find_element_by_name("q")
+            except exceptions.NoSuchElementException:
+                issue = 'No search bar?!'
+                print(issue)
+                print(self.bot_id)
+                img = self.driver.get_screenshot_as_file(
+                    f'Data/log_files/swarms/img{self.bot_id}.png')
+                return issue
+
             search_field.clear()
             time.sleep(d0 := r.uniform(0.5, 1.5))
             Util.natural_typing_in_field(search_field, term_params['term'], keep_errors= not store)
             time.sleep(d1 := r.uniform(0.15, 0.5))
             search_field.send_keys(Keys.RETURN)
+
             # checks if results will load
             nr_available = 0
             try:
@@ -549,7 +580,24 @@ class SingleBot:
                     ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
                 )
             except:
-                search_field.send_keys(Keys.RETURN)
+                try: self.interface.move_and_click("/html/body/div/div[2]/form/div[2]/div[1]/div[3]/center/input[1]")
+                except:
+                    try: WebDriverWait(self.driver, 180).until(
+                            ec.presence_of_element_located(
+                                (By.CLASS_NAME, 'rc')))
+                    except:
+                        try:
+                            e = WebDriverWait(self.driver, 5).until(
+                            ec.presence_of_element_located(
+                            (By.CLASS_NAME, 'WE0UJf')))
+                            nr_available = int(re.search('\\b[0-9]+', e.text).group(0))
+                        except:
+                            issue = 'results_load/search/tried_click'
+                            print(issue)
+
+                            img = self.driver.get_screenshot_as_file(
+                                f'Data/log_files/swarms/img{self.bot_id}.png')
+                            return issue
                 try:
                     e = WebDriverWait(self.driver, 5).until(
                         ec.presence_of_element_located(
@@ -573,7 +621,7 @@ class SingleBot:
                             img = self.driver.get_screenshot_as_file(
                                 f'Data/log_files/swarms/img{self.bot_id}.png')
                             return issue
-
+            self.interface.scroll_to_top(fast=True)
             # let more results load and download if needed
             time.sleep(d2 := r.uniform(1.5, 2.5))
             if store:

@@ -4,6 +4,7 @@ import numpy as np
 import time
 import random
 from Code import Utilities as Util
+from selenium.common.exceptions import WebDriverException
 
 from selenium import webdriver
 
@@ -147,8 +148,8 @@ class BotInterface:
         significant_movement = d > 10
 
         # calculate speed of mouse, uses an s curve with an aditional growth factor
-        a = random.uniform(7,10)
-        b = random.uniform(4,6)
+        a = random.uniform(7, 10)
+        b = random.uniform(4, 6)
         speed = (a / (1 + math.exp(-0.1 * (d - 100))) + math.sqrt(d / 4) + b)
 
         # n_jums is given by the inverse of speed times distance
@@ -260,9 +261,13 @@ class BotInterface:
         v = 0
         while np.sign(y_goal - self.y_scroll_loc) == direction:
             y_next = self.y_scroll_loc + int(v)
+            # try:
             self.driver.execute_script(f'window.scrollTo(0,{y_next})')
             self.y_scroll_loc = self.driver.execute_script(
                 'return window.pageYOffset;')
+            # except WebDriverException:
+            #     return None
+
             if self.y_scroll_loc is None:
                 self.y_scroll_loc = 0
             if t0 > 0:
@@ -301,26 +306,32 @@ class BotInterface:
                       random.randint(0, self.height))
         self.scroll(0)
 
-    def move_and_click(self, element_x_path):
+    def move_and_click(self, element_x_path, safe=False):
+
         button = self.driver.find_element_by_xpath(element_x_path)
         where = button.rect
-        x_loc = int(where['x']) + random.randint(1, max(int(where['width'] - 1),
-                                                        1))
-        y_loc = int(where['y']) + random.randint(1,
-                                                 max(int(where['height'] - 1),
-                                                     1))
+        x_dev = random.randint(1, max(int(where['width'] - 1), 1))
+        y_dev = random.randint(1, max(int(where['height'] - 1), 1))
+        x_loc = int(where['x']) + x_dev
+        y_loc = int(where['y']) + y_dev
         self.mouse_to(x_loc, y_loc)
+        if safe:
+            self.driver.move_to_element_with_offset(button, x_dev, y_dev)
         self.click()
 
-    def scroll_to_bottom(self, slow=False, limit=None):
+    def scroll_to_bottom(self, slow=False, fast=False, limit=None):
         scroll_loc_prev = -5
         if slow:
             scroll_dist = int(random.uniform(200, 350))
+        elif fast:
+            scroll_dist = int(random.uniform(600, 900))
         else:
             scroll_dist = int(random.uniform(400, 600))
         while self.y_scroll_loc > scroll_loc_prev + 2:
             scroll_loc_prev = self.y_scroll_loc
-            self.scroll(self.y_scroll_loc + scroll_dist)
+            sucess = self.scroll(self.y_scroll_loc + scroll_dist)
+            if sucess is None:
+                break
             time.sleep(random.uniform(2, 5))
             if limit is not None:
                 if self.y_scroll_loc >= limit:
@@ -328,3 +339,39 @@ class BotInterface:
             scroll_dist = scroll_dist + int(random.uniform(-20, 20))
             self.partial_mouse(self.x_mouse_loc + int(random.uniform(-7, 7)),
                                self.y_mouse_loc + int(random.uniform(-7, 7)))
+
+    def scroll_to_top(self, slow=False, fast=False):
+        scroll_loc_prev = self.reset_scroll_loc()
+
+        if slow:
+            scroll_dist = int(random.uniform(200, 350))
+        elif fast:
+            scroll_dist = int(random.uniform(900, 1200))
+        else:
+            scroll_dist = int(random.uniform(400, 600))
+        do = True
+        while do or self.y_scroll_loc < scroll_loc_prev - 2:
+            scroll_loc_prev = self.y_scroll_loc
+            do = False
+            sucess = self.scroll(self.y_scroll_loc - scroll_dist)
+            if sucess is None:
+                break
+            if fast:
+                time.sleep(random.uniform(0, 0.5))
+            else:
+                time.sleep(random.uniform(2, 5))
+
+            scroll_dist = scroll_dist + int(random.uniform(-20, 20))
+            self.partial_mouse(self.x_mouse_loc + int(random.uniform(-7, 7)),
+                               self.y_mouse_loc + int(random.uniform(-7, 7)))
+
+    def reset_scroll_loc(self):
+        self.y_scroll_loc = self.driver.execute_script(
+            'return window.pageYOffset;')
+        return self.y_scroll_loc
+
+    def safe_click(self, element, x_dev, y_dev):
+        action = ActionChains(self.driver)
+        action.move_to_element_with_offset(element, x_dev, y_dev)
+        action.click()
+        action.perform()

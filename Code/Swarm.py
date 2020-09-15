@@ -89,11 +89,13 @@ class Swarm:
         self.log = None
         self.handle_log('r')
 
-        self._profile_dir = {'Host': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
-                             'Selenium': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
-                             }
+        self._profile_dir = {
+            'Host': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
+            'Selenium': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
+        }
         if not visual:
             self._profile_dir['Selenium'] = '/home/profiles'
+
     @property
     def port(self):
         return self._port
@@ -266,7 +268,7 @@ class Swarm:
                          'exp_progress': 0,
                          'time': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                          'profile': {},
-                         'profile_path':{}}
+                         'profile_path': {}}
             with open(self._path_log, 'w') as log_file:
                 json.dump(empty_log, log_file)
             del log_file
@@ -441,7 +443,8 @@ class Swarm:
     def launch(self, exist):
         selenium_proxy = self.launch_proxy()
         if not self.visual:
-            shared_folder_1 = [self._profile_dir["Host"], self._profile_dir["Selenium"]]
+            shared_folder_1 = [self._profile_dir["Host"],
+                               self._profile_dir["Selenium"]]
 
             container = SeleniumDocker(self.port,
                                        'container_' + self.swarm_name,
@@ -462,7 +465,7 @@ class Swarm:
             instance = SingleBot(self.port,
                                  'dem',
                                  bot_id=bot_id,
-                                 swarm_name = self.swarm_name,
+                                 swarm_name=self.swarm_name,
                                  path_results=self.path_results,
                                  path_searches=self.path_searches,
                                  user_agent=profile,
@@ -522,13 +525,20 @@ class Swarm:
             bot = self.instances[bot_id]
             issue = ""
             retries = 0
-            while issue is not None and retries < 1:
+            while issue is not None and retries < 2:
                 issue = bot.launch()
                 time.sleep(15)
                 retries += 1
+
             if issue is None:
-                try: issue = bot.search(term, store)
-                except: print(bot_id)
+                try:
+                    issue = bot.search(term, store)
+                except:
+                    issue = self.retry_search(bot, term, store)
+
+            if issue is not None:
+                print(f'{bot_id} encountered {issue} attempting auto restart')
+                self.retry_search(bot, term, store)
 
             profile_path = bot.shutdown()
             self.log['profile_path'][bot_id] = profile_path
@@ -539,11 +549,12 @@ class Swarm:
                 self.log[f'incomplete_{step}'] = True
                 self.log['issue'] = issue
                 self.handle_log('w')
+                print(issue)
                 print(self.swarm_name)
                 print(self.log['profile'][bot_id])
                 break
             self.handle_log('w')
-            time.sleep(random.uniform(2 * wait//3, wait))
+            time.sleep(random.uniform(2 * wait // 3, wait))
 
         return time.perf_counter() - t_0, success
 
@@ -560,7 +571,8 @@ class Swarm:
             time_elapsed, completed = self.search(terms, store=False)
 
             if not completed:
-                print(f'Creation searches could no longer be conducted {self.swarm_name}')
+                print(
+                    f'Creation searches could no longer be conducted {self.swarm_name}')
                 break
             self.nr_searches_creation -= 1
             self.handle_log('w')
@@ -578,3 +590,20 @@ class Swarm:
             self.log['exp_progress'] = self.exp_progress
             office_hours = self.time_handler(time_elapsed)
             self.handle_log('w')
+
+    def retry_search(self, bot, term, store):
+        try:
+            bot.shutdown()
+        except:
+            None
+        container = SeleniumDocker(self.port,
+                                   'container_' + self.swarm_name,
+                                   self.timezone,
+                                   bind_config=[
+                                       self._profile_dir["Host"],
+                                       self._profile_dir["Selenium"]],
+                                   )
+        time.sleep(5)
+        bot.launch()
+        issue = bot.search(term, store)
+        return issue

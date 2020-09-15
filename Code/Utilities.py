@@ -184,7 +184,7 @@ def get_timezone():
     return tz
 
 
-def connection_handler(driver, url, wait=30, max_tries=1):
+def connection_handler(driver, url, wait=10, max_tries=3):
     """
     :param driver: selenium driver object
     :param url: str, url to some website
@@ -215,8 +215,10 @@ def connection_handler(driver, url, wait=30, max_tries=1):
                 time.sleep(wait)
             else:
                 issue = 'webdriver'
+        except:
+            issue = 'unknown hard crash'
         retries += 1
-    time.sleep(2)
+    time.sleep(120)
     try:
         driver.get(url)
         issue = None
@@ -224,5 +226,6 @@ def connection_handler(driver, url, wait=30, max_tries=1):
         issue = 'timeout'
     except sel_exc.WebDriverException:
         issue = 'webdriver'
-
+    except:
+        issue = 'Unknown hard crash'
     return issue
