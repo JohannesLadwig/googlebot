@@ -90,8 +90,8 @@ class Swarm:
         self.handle_log('r')
 
         self._profile_dir = {
-            'Host': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
-            'Selenium': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
+            'Host': f'/Users/johannes/Uni/HSG/googlebot_test/Data/profiles/swarm_{self.swarm_name}',
+            'Selenium': f'/Users/johannes/Uni/HSG/googlebot_test/Data/profiles/swarm_{self.swarm_name}',
         }
         if not visual:
             self._profile_dir['Selenium'] = '/home/profiles'
@@ -501,10 +501,9 @@ class Swarm:
         self.handle_log('w')
 
     def search(self, terms, store=False):
-        wait = 60 * self.delay_min / (2 * self.nr_inst + 1)
-
-        success = True
         t_0 = time.perf_counter()
+        wait = 60 * self.delay_min / (2 * self.nr_inst + 1)
+        success = True
         if store:
             step = 'exp'
         else:
@@ -538,7 +537,7 @@ class Swarm:
 
             if issue is not None:
                 print(f'{bot_id} encountered {issue} attempting auto restart')
-                self.retry_search(bot, term, store)
+                issue = self.retry_search(bot, term, store)
 
             profile_path = bot.shutdown()
             self.log['profile_path'][bot_id] = profile_path

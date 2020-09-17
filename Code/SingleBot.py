@@ -3,10 +3,8 @@ import pandas as pd
 import os
 import random as r
 from Code import Utilities as Util, BotInterface as BI
-import json
 import random
 from selenium import webdriver
-# import seleniumwire
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
@@ -58,7 +56,7 @@ class SingleBot:
         :param dir_results: string, directory where the single bot stores its results
             defaults to Data/results/
         :param nr_results: int, nr. of results to store when conducting
-            experimental search
+            experimental searchƒ
         :param visual: boolean, when True docker is not used, instead
             searches are conducted in a visible firefox instance.
             defaults to False
@@ -299,15 +297,19 @@ class SingleBot:
                 options=self._firefox_options
             )
         else:
-            try: self.driver = webdriver.Remote(
-                f'http://{self._IP}:{self.port}/wd/hub',
-                desired_capabilities=self._firefox_capabilities,
-                options=self._firefox_options)
-            except: issue = 'failed_launch'
+            try:
+                self.driver = webdriver.Remote(
+                    f'http://{self._IP}:{self.port}/wd/hub',
+                    desired_capabilities=self._firefox_capabilities,
+                    options=self._firefox_options)
+            except:
+                issue = 'failed_launch'
         time.sleep(5)
 
-        try: self.interface = BI.BotInterface(self.driver)
-        except: issue = 'failed_interface_connection'
+        try:
+            self.interface = BI.BotInterface(self.driver)
+        except:
+            issue = 'failed_interface_connection'
         self.interface.set_cursor_loc()
         return issue
 
@@ -325,7 +327,7 @@ class SingleBot:
                 if Util.result_domain_match(result.text, target_domain) is None:
                     print(f'{self.bot_id} loaded at bottom issue')
                     self.driver.get_screenshot_as_file(
-                                f'Data/log_files/swarms/img{self.bot_id}.png')
+                        f'Data/log_files/swarms/img{self.bot_id}.png')
                     break
                 elif Util.result_domain_match(result.text, target_domain):
                     return result
@@ -359,8 +361,8 @@ class SingleBot:
         next_button = self.driver.find_element_by_xpath('//*[@id="pnnext"]')
         where = next_button.rect
         where['y'] -= self.interface.y_scroll_loc
-        x_dev =random.randint(1, max(int(where['width'] - 1), 1))
-        y_dev = random.randint(1,max(int(where['height'] - 1),1))
+        x_dev = random.randint(1, max(int(where['width'] - 1), 1))
+        y_dev = random.randint(1, max(int(where['height'] - 1), 1))
         x_loc = int(where['x']) + x_dev
         y_loc = int(where['y']) + y_dev
         self.interface.mouse_to(x_loc, y_loc)
@@ -380,7 +382,7 @@ class SingleBot:
 
         time.sleep(random.uniform(1, 3))
         try:
-            e = self.driver.find_elements_by_class_name('WE0UJf')
+            e = self.driver.find_elements_by_class_name('WE0UJf')[0]
             nr_available = int(re.search('\\b[0-9]+', e.text).group(0))
         except:
             nr_available = 100
@@ -397,20 +399,25 @@ class SingleBot:
                 result = self.match_domain(choice_param)
             elif choice_type == 'rank':
                 result, rank = self.match_rank(choice_param, rank)
-            if result is None and page < max_pages and nr_available > 8:
+            if result is None and page < max_pages and nr_available > (max_pages-1)*8:
                 self.next_page()
                 page += 1
             else:
                 break
         if result is not None:
-            try: button = result.find_element_by_class_name('LC20lb.DKV0Md')
+            try:
+                button = result.find_element_by_class_name('LC20lb.DKV0Md')
             except:
-                print('values dont exist')
-                img = self.driver.get_screenshot_as_file(
-                                f'Data/log_files/swarms/img{self.bot_id}.png')
-                print(self.bot_id)
+                try:
+                    self.interface.scroll_to_bottom()
+                    button = result.find_element_by_class_name('LC20lb.DKV0Md')
+                except:
+                    print('values dont exist')
+                    img = self.driver.get_screenshot_as_file(
+                        f'Data/log_files/swarms/img{self.bot_id}.png')
+                    print(self.bot_id)
 
-                return 'failure'
+                    return 'failure'
             where = button.rect
             if choice_type == 'domain':
                 self.interface.scroll_to_top(fast=True)
@@ -430,12 +437,14 @@ class SingleBot:
             self.interface.safe_click(button, x_dev, y_dev)
             self.interface.y_scroll_loc = self.driver.execute_script(
                 'return window.pageYOffset;')
-            time.sleep(5)
+            time.sleep(10)
             try:
                 self.interface.scroll_to_bottom(slow=True, limit=3500)
             except:
                 print(self.bot_id)
                 print('failure on scroll to bottom')
+                img = self.driver.get_screenshot_as_file(
+                    f'Data/log_files/swarms/img{self.bot_id}.png')
                 print(term_params)
                 print(self.driver.current_url)
                 return 'failure'
@@ -458,7 +467,8 @@ class SingleBot:
         self._firefox_profile = None
 
         if not self.visual:
-            if os.path.isfile(f'{self._profile_dir["Host"]}/{self.bot_id}/cookies.sqlite'):
+            if os.path.isfile(
+                    f'{self._profile_dir["Host"]}/{self.bot_id}/cookies.sqlite'):
                 os.system(
                     f'docker exec container_{self._swarm_name} rm -r {self._profile_dir["Selenium"]}/{self.bot_id}')
 
@@ -466,24 +476,31 @@ class SingleBot:
                 f'docker exec container_{self._swarm_name} cp --remove-destination -a {path} {self._profile_dir["Selenium"]}/{self.bot_id}')
 
             self.driver.quit()
-            if os.path.lexists(lock:=f'{self._profile_dir["Host"]}/{self.bot_id}/lock'):
+            if os.path.lexists(
+                    lock := f'{self._profile_dir["Host"]}/{self.bot_id}/lock'):
                 os.unlink(lock)
-                os.unlink(f'{self._profile_dir["Host"]}/{self.bot_id}/.parentlock')
+                os.unlink(
+                    f'{self._profile_dir["Host"]}/{self.bot_id}/.parentlock')
             self._profile_path = f'{self._profile_dir["Host"]}/{self.bot_id}'
 
         else:
             if not os.path.isdir(f'{self._profile_dir["Host"]}/{self.bot_id}'):
-                shutil.copytree(path, f'{self._profile_dir["Host"]}/{self.bot_id}')
+                shutil.copytree(path,
+                                f'{self._profile_dir["Host"]}/{self.bot_id}')
                 time.sleep(2)
                 self.driver.quit()
             else:
-                shutil.copytree(path, f'{self._profile_dir["Host"]}/interim_{self.bot_id}')
+                shutil.copytree(path,
+                                f'{self._profile_dir["Host"]}/interim_{self.bot_id}')
                 time.sleep(2)
                 self.driver.quit()
                 if os.path.isdir(f'{self._profile_dir["Host"]}/{self.bot_id}'):
                     shutil.rmtree(f'{self._profile_dir["Host"]}/{self.bot_id}')
-                shutil.copytree(f'{self._profile_dir["Host"]}/interim_{self.bot_id}', f'{self._profile_dir["Host"]}/{self.bot_id}')
-                shutil.rmtree(f'{self._profile_dir["Host"]}/interim_{self.bot_id}')
+                shutil.copytree(
+                    f'{self._profile_dir["Host"]}/interim_{self.bot_id}',
+                    f'{self._profile_dir["Host"]}/{self.bot_id}')
+                shutil.rmtree(
+                    f'{self._profile_dir["Host"]}/interim_{self.bot_id}')
 
             self._profile_path = f'{self._profile_dir["Host"]}/{self.bot_id}'
 
@@ -552,7 +569,7 @@ class SingleBot:
                 term_params['term'] = ' '.join(words)
         # open google, if sucessfull proceed
         if issue := Util.connection_handler(self.driver,
-                              "https://www.google.com/") is None:
+                                            "https://www.google.com/") is None:
             try:
                 search_field = self.driver.find_element_by_name("q")
             except exceptions.NoSuchElementException:
@@ -569,66 +586,45 @@ class SingleBot:
 
             search_field.clear()
             time.sleep(d0 := r.uniform(0.5, 1.5))
-            Util.natural_typing_in_field(search_field, term_params['term'], keep_errors= not store)
+            Util.natural_typing_in_field(search_field, term_params['term'],
+                                         keep_errors=not store)
             time.sleep(d1 := r.uniform(0.15, 0.5))
             search_field.send_keys(Keys.RETURN)
 
             # checks if results will load
-            nr_available = 0
-            try:
-                WebDriverWait(self.driver, 5).until(
-                    ec.presence_of_element_located((By.CLASS_NAME, 'rc'))
-                )
-            except:
-                try: self.interface.move_and_click("/html/body/div/div[2]/form/div[2]/div[1]/div[3]/center/input[1]")
-                except:
-                    try: WebDriverWait(self.driver, 180).until(
-                            ec.presence_of_element_located(
-                                (By.CLASS_NAME, 'rc')))
-                    except:
-                        try:
-                            e = WebDriverWait(self.driver, 5).until(
-                            ec.presence_of_element_located(
-                            (By.CLASS_NAME, 'WE0UJf')))
-                            nr_available = int(re.search('\\b[0-9]+', e.text).group(0))
-                        except:
-                            issue = 'results_load/search/tried_click'
-                            print(issue)
 
-                            img = self.driver.get_screenshot_as_file(
-                                f'Data/log_files/swarms/img{self.bot_id}.png')
-                            return issue
+            issue, nr_results = Util.click_search(self.driver, self.interface)
+            if nr_results == -1:
+                issue, nr_results = Util.click_search(self.driver, self.interface)
+            if nr_results == -1:
+                issue, nr_results = Util.click_search(self.driver, self.interface)
+            if nr_results == -1:
+                e_present = self.driver.find_elements_by_class_name('rc')
+                if len(e_present)>0:
+                    nr_results=1
                 try:
-                    e = WebDriverWait(self.driver, 5).until(
-                        ec.presence_of_element_located(
-                            (By.CLASS_NAME, 'WE0UJf')))
-                    nr_available = int(re.search('\\b[0-9]+', e.text).group(0))
+                    self.interface.scroll_to_top(fast=True)
                 except:
-                    try:
-                        WebDriverWait(self.driver, 180).until(
-                            ec.presence_of_element_located(
-                                (By.CLASS_NAME, 'rc'))
-                        )
-                    except:
-                        try:
-                            e = WebDriverWait(self.driver, 5).until(
-                                ec.presence_of_element_located(
-                                    (By.CLASS_NAME, 'WE0UJf')))
-                            nr_available = int(
-                                re.search('\\b[0-9]+', e.text).group(0))
-                        except:
-                            issue = 'results_load/search'
-                            img = self.driver.get_screenshot_as_file(
-                                f'Data/log_files/swarms/img{self.bot_id}.png')
-                            return issue
+                    issue = 'theres something here, but its very broken'
+            if issue is not None:
+                    print(f'{self.bot_id} encountered {issue}')
+                    self.driver.get_screenshot_as_file(
+                        f'Data/log_files/swarms/img{self.bot_id}.png')
+                    return issue+'/search'
+            elif nr_results == -1:
+                print(f'{self.bot_id} encountered -1 results')
+                self.driver.get_screenshot_as_file(
+                    f'Data/log_files/swarms/img{self.bot_id}.png')
+                return issue+'/search'
             self.interface.scroll_to_top(fast=True)
             # let more results load and download if needed
             time.sleep(d2 := r.uniform(1.5, 2.5))
             if store:
                 time.sleep(d2 := r.uniform(1.5, 2.5))
                 self.download_results(term_params['term'])
-
-            if term_params['choice_type'] != 'none':
+            if nr_results == 0:
+                selected = 'No Results'
+            elif term_params['choice_type'] != 'none':
                 time.sleep(d2 := r.uniform(1.5, 2.5))
                 selected = self.select_result(term_params)
             else:

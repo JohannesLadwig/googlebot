@@ -8,14 +8,18 @@ import scipy.interpolate as si
 from datetime import datetime
 import pytz
 import selenium.common.exceptions as sel_exc
-
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as ec
+import re
 
 from pytz import reference
 
 TITLE_LOC = {'Breitbart': 0, 'Slate': 0, 'AlterNet': 0, 'TheBlaze': 0}
 
 
-def natural_typing_in_field(field, string, keep_errors=True, min_delay=0.18, max_delay=0.22,
+def natural_typing_in_field(field, string, keep_errors=True, min_delay=0.18,
+                            max_delay=0.22,
                             p_error=0.03):
     with open("Data/diverse/adjacent_letters.json", 'r') as f:
         letters_dict = json.load(f)
@@ -38,7 +42,8 @@ def natural_typing_in_field(field, string, keep_errors=True, min_delay=0.18, max
             delay = r.uniform(min_delay, max_delay)
             time.sleep(delay)
 
-            keep_mistake = (r.choices([True, False], [0.22, 0.78])[0]) and keep_errors
+            keep_mistake = (r.choices([True, False], [0.22, 0.78])[
+                0]) and keep_errors
             while true_following > 0 and not keep_mistake:
                 delay = r.uniform(min_delay, max_delay)
                 time.sleep(delay)
@@ -229,3 +234,60 @@ def connection_handler(driver, url, wait=10, max_tries=3):
     except:
         issue = 'Unknown hard crash'
     return issue
+
+
+def click_search(driver, interface):
+    issue = None
+    nr_results = -1
+    try:
+        e = WebDriverWait(driver, 10).until(
+            ec.presence_of_element_located(
+                (By.CLASS_NAME, 'WE0UJf')))
+        nr_results = int(re.search('\\b[0-9]+', e.text).group(0))
+    except:
+        try:
+            interface.scroll_to_top(fast=True)
+        except:
+            issue = 'cant scroll'
+        e_nr_res = driver.find_elements_by_class_name('WE0UJf')
+        e_no_res = driver.find_elements_by_class_name('mnr-c')
+        e_search_button = driver.find_elements_by_xpath(
+            '/html/body/div/div[2]/form/div[2]/div[1]/div[3]/center/input[1]')
+        if len(e_nr_res)!=0:
+            nr_results = int(re.search('\\b[0-9]+', e_nr_res[0].text).group(0))
+        elif len(e_no_res) != 0:
+            nr_results = 0
+        elif len(e_search_button) != 0:
+            try:
+                interface.move_and_click(
+                    "/html/body/div/div[2]/form/div[2]/div[1]/div[3]/center/input[1]")
+            except:
+                issue = 'tried re_click but failed'
+                return issue, nr_results
+            try:
+                e = WebDriverWait(driver, 60).until(ec.presence_of_element_located(
+                    (By.CLASS_NAME, 'WE0UJf')))
+                nr_results = int(re.search('\\b[0-9]+', e.text).group(0))
+            except:
+                return 'waited_to_long', nr_results
+
+        e_did_you_mean = driver.find_elements_by_xpath(
+            "/html/body/div[7]/div[2]/div[10]/div[1]/div[2]/div/div[1]/div[2]/div/p/a")
+        if len(e_did_you_mean) > 0 and nr_results in {0, -1}:
+            try:
+                interface.move_and_click(
+                    "/html/body/div[7]/div[2]/div[10]/div[1]/div[2]/div/div[1]/div[2]/div/p/a")
+            except:
+                issue = 'tried did you mean'
+                return issue, nr_results
+
+    if nr_results > 0:
+        try: WebDriverWait(driver, 60).until(
+                ec.presence_of_element_located(
+                (By.CLASS_NAME, 'rc')))
+        except:
+            return f'there are results, but they wont load or have different class name', nr_results
+
+        return issue, nr_results
+    else:
+        return issue, nr_results
