@@ -447,7 +447,7 @@ class Swarm:
                                self._profile_dir["Selenium"]]
 
             container = SeleniumDocker(self.port,
-                                       'container_' + self.swarm_name,
+                                       f'container_{self.swarm_name}',
                                        self.timezone,
                                        bind_config=shared_folder_1,
                                        )
@@ -502,7 +502,7 @@ class Swarm:
 
     def search(self, terms, store=False):
         t_0 = time.perf_counter()
-        wait = 60 * self.delay_min / (2 * self.nr_inst + 1)
+        wait = 60 * self.delay_min / (4 * self.nr_inst + 1)
         success = True
         if store:
             step = 'exp'
@@ -553,12 +553,14 @@ class Swarm:
                 print(self.log['profile'][bot_id])
                 break
             self.handle_log('w')
-            time.sleep(random.uniform(2 * wait // 3, wait))
+            time.sleep(random.uniform(wait, 3 * wait))
 
         return time.perf_counter() - t_0, success
 
     def conduct_searches(self, creation_only=False):
         office_hours = self.time_handler(self.delay_min * 60)
+        time.sleep(60 * random.uniform(0, self.delay_min/(self.nr_inst+1)))
+
         completed = True
         while office_hours and self.nr_searches_creation > 0:
             self.log['nr_create'] = self.log['nr_create'] + 1
@@ -595,8 +597,9 @@ class Swarm:
             bot.shutdown()
         except:
             None
+
         container = SeleniumDocker(self.port,
-                                   'container_' + self.swarm_name,
+                                   f'container_{self.swarm_name}',
                                    self.timezone,
                                    bind_config=[
                                        self._profile_dir["Host"],

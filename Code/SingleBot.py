@@ -615,7 +615,7 @@ class SingleBot:
                 print(f'{self.bot_id} encountered -1 results')
                 self.driver.get_screenshot_as_file(
                     f'Data/log_files/swarms/img{self.bot_id}.png')
-                return issue+'/search'
+                return issue +'/search'
             self.interface.scroll_to_top(fast=True)
             # let more results load and download if needed
             time.sleep(d2 := r.uniform(1.5, 2.5))

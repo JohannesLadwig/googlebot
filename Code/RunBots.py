@@ -73,7 +73,7 @@ def declare_swarms(inst, t, night, proxy):
               night_search=night,
               dir_results='Data/results/')
     e = Swarm(port=4448,
-              nr_inst=inst,
+              nr_inst=inst // 2,
               flag='control',
               nr_searches_creation=0,
               path_terms_creation="Data/terms/right_terms.json",
@@ -84,10 +84,25 @@ def declare_swarms(inst, t, night, proxy):
               proxy=proxy.get('swarm_e'),
               timezone=proxy.get('swarm_e', {}).get('TZ'),
               nr_results=1,
-              delay_min=t,
+              delay_min=t*2,
               night_search=night,
               dir_results='Data/results/')
-    return [a, b, c, d, e]
+    f = Swarm(port=4450,
+              nr_inst=inst // 2,
+              flag='control',
+              nr_searches_creation=0,
+              path_terms_creation="Data/terms/right_terms.json",
+              path_terms_benign="Data/terms/benign_terms.json",
+              nr_searches_exp=0,
+              path_terms_experiment="Data/terms/exp_terms.json",
+              swarm_name='f',
+              proxy=proxy.get('swarm_f'),
+              timezone=proxy.get('swarm_f', {}).get('TZ'),
+              nr_results=1,
+              delay_min=t*2,
+              night_search=night,
+              dir_results='Data/results/')
+    return [a, b, c, d, e, f]
 
 
 def searches_remaining(process, all_bots):
@@ -106,7 +121,7 @@ def set_search_param(process, all_bots):
     if process in ['c', 'r']:
         nr_search = int(input(
             'Please input the desired nr. of searches per instance in creating a profile: '))
-        for individual in all_bots[:-1]:
+        for individual in all_bots[:-2]:
             individual.nr_searches_creation = nr_search
     if process in ['e', 'r']:
         nr_search = int(input(
@@ -170,7 +185,6 @@ def launch_control(all_bots, process):
     creation_complete = searches_remaining('c', all_bots) == 0
     if creation_complete or (process == 'e'):
         launch = True
-        launch = True
     return launch
 
 
@@ -203,7 +217,7 @@ if __name__ == "__main__":
         input('Are you restarting a crashed experiment session? (y/n): '))
 
     swarm_list = declare_swarms(nr_inst, delay, night_search, proxy_data)
-    swarm_a, swarm_b, swarm_c, swarm_d, swarm_e = swarm_list
+    swarm_a, swarm_b, swarm_c, swarm_d, swarm_e, swarm_f = swarm_list
 
     keep_cookie = Util.speech_bool(
         input('Re-use old cookies and run from log? (y/n): '))
@@ -212,7 +226,7 @@ if __name__ == "__main__":
         for bot in swarm_list:
             bot.launch(keep_cookie)
     else:
-        pool = mp.Pool(processes=5)
+        pool = mp.Pool(processes=6)
         swarm_list = pool.map(create, swarm_list)
         pool.close()
         pool.join()
@@ -273,9 +287,8 @@ if __name__ == "__main__":
                     except:
                         raise Exception(
                             f'The benign file has been corrupted just before restart')
-
                 intermediate_b = partial(execute, create=create_only)
-                pool = mp.Pool(processes=5)
+                pool = mp.Pool(processes=6)
                 swarm_list = pool.map(intermediate_b, swarm_list)
                 pool.close()
                 pool.join()

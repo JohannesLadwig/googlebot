@@ -26,3 +26,7 @@ class ProxyDocker:
         authentication = f" --set upstream_auth=\"{self._proxy_user}:{self._proxy_password}\""
         port = f" --set listen_port=\"{self._port}\""
         return mode + authentication + port
+
+    def new_location(self, user):
+        self._proxy_user = user
+        os.system(f'docker update {self._name} --set upstream_auth=\"{self._proxy_user}:{self._proxy_password}\""')
