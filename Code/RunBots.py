@@ -84,7 +84,7 @@ def declare_swarms(inst, t, night, proxy):
               proxy=proxy.get('swarm_e'),
               timezone=proxy.get('swarm_e', {}).get('TZ'),
               nr_results=1,
-              delay_min=t*2,
+              delay_min=t * 2,
               night_search=night,
               dir_results='Data/results/')
     f = Swarm(port=4450,
@@ -99,7 +99,7 @@ def declare_swarms(inst, t, night, proxy):
               proxy=proxy.get('swarm_f'),
               timezone=proxy.get('swarm_f', {}).get('TZ'),
               nr_results=1,
-              delay_min=t*2,
+              delay_min=t * 2,
               night_search=night,
               dir_results='Data/results/')
     return [a, b, c, d, e, f]
@@ -134,10 +134,11 @@ def set_search_param(process, all_bots):
 
 
 def restart_search_numbers(swarms):
-    for swarm in swarms:
+    for swarm in swarms[:-2]:
         swarm.nr_searches_creation = max(0,
                                          swarm.nr_searches_creation - swarm.log[
                                              'nr_create'])
+    for swarm in swarms:
         swarm.nr_searches_exp = max(0,
                                     swarm.nr_searches_exp - swarm.log['nr_exp'])
         swarm.exp_progress = swarm.log['exp_progress']
@@ -170,7 +171,7 @@ def visual(nr_vis, t_delay, nr_searches, nr_experiment, proxy):
                   night_search=True,
                   dir_results='Data/results/',
                   dir_log='Data/log_files/swarms/',
-                  visual=True)
+                  visual=False)
     bernd.launch(exist=False)
     execute(bernd)
 
@@ -254,9 +255,8 @@ if __name__ == "__main__":
                 if is_exp := launch_control(swarm_list, instruction):
                     create_only = False
 
-                if (
-                        7 > Util.get_time(timezone) or Util.get_time(
-                    timezone) >= 22) and not night_search:
+                if (7 > Util.get_time(timezone) or Util.get_time(
+                        timezone) >= 22) and not night_search:
                     bots_asleep = True
                     print('Its night, bots are asleep!')
                 while (7 > Util.get_time(timezone) or Util.get_time(
@@ -276,6 +276,7 @@ if __name__ == "__main__":
                     print("Checking the GDELT Database for current issues")
                     gkg.main(50)
                 else:
+                    restart_search_numbers(swarm_list)
                     restart = False
                 print("Waking the bots")
                 bots_asleep = False

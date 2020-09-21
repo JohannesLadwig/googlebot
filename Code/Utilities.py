@@ -189,7 +189,7 @@ def get_timezone():
     return tz
 
 
-def connection_handler(driver, url, wait=10, max_tries=3):
+def connection_handler(driver, url, wait=30, max_tries=3):
     """
     :param driver: selenium driver object
     :param url: str, url to some website
@@ -204,7 +204,6 @@ def connection_handler(driver, url, wait=10, max_tries=3):
     retries = 0
     issue = None
     while retries < max_tries:
-
         try:
             driver.get(url)
             return issue
@@ -223,7 +222,7 @@ def connection_handler(driver, url, wait=10, max_tries=3):
         except:
             issue = 'unknown hard crash'
         retries += 1
-    time.sleep(120)
+    time.sleep(r.uniform(60, 120))
     try:
         driver.get(url)
         issue = None
@@ -240,7 +239,7 @@ def click_search(driver, interface):
     issue = None
     nr_results = -1
     try:
-        e = WebDriverWait(driver, 10).until(
+        e = WebDriverWait(driver, 20).until(
             ec.presence_of_element_located(
                 (By.CLASS_NAME, 'WE0UJf')))
         nr_results = int(re.search('\\b[0-9]+', e.text).group(0))
@@ -253,7 +252,7 @@ def click_search(driver, interface):
         e_no_res = driver.find_elements_by_class_name('mnr-c')
         e_search_button = driver.find_elements_by_xpath(
             '/html/body/div/div[2]/form/div[2]/div[1]/div[3]/center/input[1]')
-        if len(e_nr_res)!=0:
+        if len(e_nr_res) != 0:
             nr_results = int(re.search('\\b[0-9]+', e_nr_res[0].text).group(0))
         elif len(e_no_res) != 0:
             nr_results = 0
@@ -265,8 +264,9 @@ def click_search(driver, interface):
                 issue = 'tried re_click but failed'
                 return issue, nr_results
             try:
-                e = WebDriverWait(driver, 60).until(ec.presence_of_element_located(
-                    (By.CLASS_NAME, 'WE0UJf')))
+                e = WebDriverWait(driver, 60).until(
+                    ec.presence_of_element_located(
+                        (By.CLASS_NAME, 'WE0UJf')))
                 nr_results = int(re.search('\\b[0-9]+', e.text).group(0))
             except:
                 return 'waited_to_long', nr_results
@@ -280,14 +280,28 @@ def click_search(driver, interface):
             except:
                 issue = 'tried did you mean'
                 return issue, nr_results
+            try:
+                e = WebDriverWait(driver, 60).until(
+                    ec.presence_of_element_located(
+                        (By.CLASS_NAME, 'WE0UJf')))
+                nr_results = int(re.search('\\b[0-9]+', e.text).group(0))
+            except:
+                nr_results = -1
 
     if nr_results > 0:
-        try: WebDriverWait(driver, 60).until(
+        try:
+            WebDriverWait(driver, 60).until(
                 ec.presence_of_element_located(
-                (By.CLASS_NAME, 'rc')))
+                    (By.CLASS_NAME, 'rc')))
+            issue = None
         except:
             return f'there are results, but they wont load or have different class name', nr_results
 
         return issue, nr_results
     else:
+        WebDriverWait(driver, 10).until(
+                ec.presence_of_element_located(
+                    (By.CLASS_NAME, 'rc')))
+        issue = None
+        nr_results = 1
         return issue, nr_results

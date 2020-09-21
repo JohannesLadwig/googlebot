@@ -7,6 +7,7 @@ from Code.SeleniumDocker import SeleniumDocker
 from Code.ProxyDocker import ProxyDocker
 from datetime import datetime
 import Code.Utilities as Util
+import shutil
 
 
 class Swarm:
@@ -90,8 +91,8 @@ class Swarm:
         self.handle_log('r')
 
         self._profile_dir = {
-            'Host': f'/Users/johannes/Uni/HSG/googlebot_test/Data/profiles/swarm_{self.swarm_name}',
-            'Selenium': f'/Users/johannes/Uni/HSG/googlebot_test/Data/profiles/swarm_{self.swarm_name}',
+            'Host': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
+            'Selenium': f'/Users/johannes/Uni/HSG/googlebot/Data/profiles/swarm_{self.swarm_name}',
         }
         if not visual:
             self._profile_dir['Selenium'] = '/home/profiles'
@@ -437,6 +438,7 @@ class Swarm:
                     selenium_proxy = f'172.17.0.1:{self.proxy["port"]}'
             else:
                 selenium_proxy = self.proxy['domain']
+
         print(selenium_proxy)
         return selenium_proxy
 
@@ -451,6 +453,7 @@ class Swarm:
                                        self.timezone,
                                        bind_config=shared_folder_1,
                                        )
+
             time.sleep(5)
         with open('Data/diverse/agents_3.json') as profiles_in:
             profiles = json.load(profiles_in)
@@ -479,13 +482,19 @@ class Swarm:
             self.log['exp'][bot_id] = self.log['exp'].get(bot_id, 0)
         self.handle_log('w')
 
-    def time_handler(self, t_elapsed):
+    def time_handler(self, t_elapsed, start_up=False):
         office_hour = True
-        if not (7 <= Util.get_time(self.timezone) < 22):
+        if 3 > Util.get_time(self.timezone) or 22 < Util.get_time(self.timezone)  :
             office_hour = False
-        elif (wait := (60 * self.delay_min - t_elapsed + (
-                t_elapsed / self.nr_inst))) > 0:
-            wait = random.uniform(wait, wait + 10)
+        while not self._night_search and 3 < Util.get_time(self.timezone) < 7:
+            time.sleep(300)
+        if start_up:
+            wait = 60 * random.uniform(0, self.delay_min / self.nr_inst)
+        else:
+            wait = 60 * self.delay_min / self.nr_inst
+            wait = random.uniform(wait, 1.5 * wait)
+
+        if office_hour and wait > 0:
             time.sleep(wait)
         return office_hour or self.night_search
 
@@ -502,7 +511,7 @@ class Swarm:
 
     def search(self, terms, store=False):
         t_0 = time.perf_counter()
-        wait = 60 * self.delay_min / (4 * self.nr_inst + 1)
+        wait = 60 * self.delay_min / (4 * self.nr_inst)
         success = True
         if store:
             step = 'exp'
@@ -538,7 +547,6 @@ class Swarm:
             if issue is not None:
                 print(f'{bot_id} encountered {issue} attempting auto restart')
                 issue = self.retry_search(bot, term, store)
-
             profile_path = bot.shutdown()
             self.log['profile_path'][bot_id] = profile_path
             success = issue is None
@@ -548,19 +556,16 @@ class Swarm:
                 self.log[f'incomplete_{step}'] = True
                 self.log['issue'] = issue
                 self.handle_log('w')
-                print(issue)
-                print(self.swarm_name)
+                print(f'{bot_id} encountered {issue} auto restart failed')
                 print(self.log['profile'][bot_id])
                 break
             self.handle_log('w')
-            time.sleep(random.uniform(wait, 3 * wait))
+            time.sleep(random.uniform(3 * wait, 5 * wait))
 
         return time.perf_counter() - t_0, success
 
     def conduct_searches(self, creation_only=False):
-        office_hours = self.time_handler(self.delay_min * 60)
-        time.sleep(60 * random.uniform(0, self.delay_min/(self.nr_inst+1)))
-
+        office_hours = self.time_handler(0, start_up=True)
         completed = True
         while office_hours and self.nr_searches_creation > 0:
             self.log['nr_create'] = self.log['nr_create'] + 1
@@ -597,6 +602,13 @@ class Swarm:
             bot.shutdown()
         except:
             None
+        if self.proxy['domain'] is not None:
+            if self.proxy['port'] is not None:
+                ProxyDocker(f'proxy_{self.swarm_name}',
+                            self.proxy['domain'],
+                            self.proxy['username'],
+                            self.proxy['password'],
+                            self.proxy['port'])
 
         container = SeleniumDocker(self.port,
                                    f'container_{self.swarm_name}',

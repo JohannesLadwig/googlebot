@@ -106,13 +106,21 @@ class SingleBot:
             if os.path.isdir(f'{self._profile_dir["Host"]}/{self.bot_id}'):
                 shutil.rmtree(f'{self._profile_dir["Host"]}/{self.bot_id}')
             self._firefox_options = webdriver.FirefoxOptions()
-            self._firefox_options.set_preference("moz:webdriverClick", 'true')
-
-            self._firefox_options.set_preference("media.autoplay.default", 1)
-            self._firefox_options.set_preference("media.autoplay.allow-muted",
-                                                 'false')
+            # self._firefox_options.set_preference("moz:webdriverClick", 'true')
+            #
+            # self._firefox_options.set_preference("media.autoplay.default", 1)
+            # self._firefox_options.set_preference("media.autoplay.allow-muted",
+            #                                      'false')
             profile = webdriver.FirefoxProfile()
             profile.set_preference("general.useragent.override", user_agent)
+            # profile.set_preference("moz:webdriverClick", True)
+            profile.set_preference("media.autoplay.default", 1)
+            profile.set_preference("media.autoplay.allow-muted",
+                                   False)
+            profile.accept_untrusted_certs = True
+            profile.assume_untrusted_cert_issuer = False
+            profile.set_preference("browser.preferences.instantApply", True)
+
             self._firefox_options.profile = profile
             self.create(accept_cookie)
         else:
@@ -268,7 +276,7 @@ class SingleBot:
             )
             self.driver.maximize_window()
 
-        self.driver.implicitly_wait(30)
+        self.driver.implicitly_wait(120)
         Util.connection_handler(self.driver, "https://www.google.com/")
         time.sleep(3)
         if accept_cookie:
@@ -399,7 +407,8 @@ class SingleBot:
                 result = self.match_domain(choice_param)
             elif choice_type == 'rank':
                 result, rank = self.match_rank(choice_param, rank)
-            if result is None and page < max_pages and nr_available > (max_pages-1)*8:
+            if result is None and page < max_pages and nr_available > (
+                    max_pages - 1) * 8:
                 self.next_page()
                 page += 1
             else:
@@ -413,6 +422,7 @@ class SingleBot:
                     button = result.find_element_by_class_name('LC20lb.DKV0Md')
                 except:
                     print('values dont exist')
+                    print(result.get_attribute('innerHTML'))
                     img = self.driver.get_screenshot_as_file(
                         f'Data/log_files/swarms/img{self.bot_id}.png')
                     print(self.bot_id)
@@ -568,8 +578,8 @@ class SingleBot:
                 words = words[0:nr]
                 term_params['term'] = ' '.join(words)
         # open google, if sucessfull proceed
-        if issue := Util.connection_handler(self.driver,
-                                            "https://www.google.com/") is None:
+        if (issue := Util.connection_handler(self.driver,
+                                             "https://www.google.com/")) is None:
             try:
                 search_field = self.driver.find_element_by_name("q")
             except exceptions.NoSuchElementException:
@@ -595,27 +605,29 @@ class SingleBot:
 
             issue, nr_results = Util.click_search(self.driver, self.interface)
             if nr_results == -1:
-                issue, nr_results = Util.click_search(self.driver, self.interface)
+                issue, nr_results = Util.click_search(self.driver,
+                                                      self.interface)
             if nr_results == -1:
-                issue, nr_results = Util.click_search(self.driver, self.interface)
+                issue, nr_results = Util.click_search(self.driver,
+                                                      self.interface)
             if nr_results == -1:
                 e_present = self.driver.find_elements_by_class_name('rc')
-                if len(e_present)>0:
-                    nr_results=1
+                if len(e_present) > 0:
+                    nr_results = 1
                 try:
                     self.interface.scroll_to_top(fast=True)
                 except:
                     issue = 'theres something here, but its very broken'
             if issue is not None:
-                    print(f'{self.bot_id} encountered {issue}')
-                    self.driver.get_screenshot_as_file(
-                        f'Data/log_files/swarms/img{self.bot_id}.png')
-                    return issue+'/search'
+                print(f'{self.bot_id} encountered {issue}')
+                self.driver.get_screenshot_as_file(
+                    f'Data/log_files/swarms/img{self.bot_id}.png')
+                return issue + '/search'
             elif nr_results == -1:
                 print(f'{self.bot_id} encountered -1 results')
                 self.driver.get_screenshot_as_file(
                     f'Data/log_files/swarms/img{self.bot_id}.png')
-                return issue +'/search'
+                return issue + '/search'
             self.interface.scroll_to_top(fast=True)
             # let more results load and download if needed
             time.sleep(d2 := r.uniform(1.5, 2.5))

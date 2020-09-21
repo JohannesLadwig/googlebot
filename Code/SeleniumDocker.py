@@ -15,17 +15,16 @@ class SeleniumDocker:
         self._name = name
         self.timezone = timezone
         self._proxy = proxy_domain is not None
-        #self._proxy = False
         self._proxy_domain = proxy_domain
         self._proxy_user = proxy_user
         self._proxy_password = proxy_password
         self._memory = memory
         self._image = image
         self._mount_1 = self.bind_mount(bind_config)
-        # self._mount_2 = self.vol_mount(vol_config)
         self.generate_proxy_config()
-        self._run_command = f'docker run -p {self._port}:4444 -d --shm-size={self._memory} {self.generate_proxy_config()} {self._mount_1}  --env TZ={self.timezone} --name {self._name} {self._image}'
+        self._run_command = f'docker run -p {self._port}:4444 -d --shm-size={self._memory} {self.generate_proxy_config()} {self._mount_1} --env TZ={self.timezone} --name {self._name} {self._image}'
         self.create_container()
+
 
     @property
     def timezone(self):
