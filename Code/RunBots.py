@@ -84,7 +84,7 @@ def declare_swarms(inst, t, night, proxy):
               proxy=proxy.get('swarm_e'),
               timezone=proxy.get('swarm_e', {}).get('TZ'),
               nr_results=1,
-              delay_min=t * 2,
+              delay_min=t,
               night_search=night,
               dir_results='Data/results/')
     f = Swarm(port=4450,
@@ -99,7 +99,7 @@ def declare_swarms(inst, t, night, proxy):
               proxy=proxy.get('swarm_f'),
               timezone=proxy.get('swarm_f', {}).get('TZ'),
               nr_results=1,
-              delay_min=t * 2,
+              delay_min=t,
               night_search=night,
               dir_results='Data/results/')
     return [a, b, c, d, e, f]
@@ -171,7 +171,7 @@ def visual(nr_vis, t_delay, nr_searches, nr_experiment, proxy):
                   night_search=True,
                   dir_results='Data/results/',
                   dir_log='Data/log_files/swarms/',
-                  visual=False)
+                  visual=True)
     bernd.launch(exist=False)
     execute(bernd)
 
@@ -215,6 +215,8 @@ if __name__ == "__main__":
 
     night_search = Util.speech_bool(input('Conduct searches at night (y/n): '))
     restart = Util.speech_bool(
+        input('Is this a restart? (y/n): '))
+    restart_exp = Util.speech_bool(
         input('Are you restarting a crashed experiment session? (y/n): '))
 
     swarm_list = declare_swarms(nr_inst, delay, night_search, proxy_data)
@@ -262,6 +264,9 @@ if __name__ == "__main__":
                 while (7 > Util.get_time(timezone) or Util.get_time(
                         timezone) >= 22) and not night_search:
                     time.sleep(300)
+                if restart:
+                    restart_search_numbers(swarm_list)
+                    restart = False
 
                 if bots_asleep and not is_exp:
                     print("Reading todays news")
@@ -270,14 +275,13 @@ if __name__ == "__main__":
                         "Converting headlines to queries, creating fresh set of nonsense")
                     Gen.GenerateSearchTerms('Data/terms/Raw_Media_Headers.csv')
                     Gen.GenerateBenignTerms()
-                elif bots_asleep and not restart:
+                elif bots_asleep and not restart_exp:
                     for bot in swarm_list:
-                        bot.exp_progress = 0
+                        bot.exp_progrewss = 0
                     print("Checking the GDELT Database for current issues")
                     gkg.main(50)
                 else:
-                    restart_search_numbers(swarm_list)
-                    restart = False
+                    restart_exp = False
                 print("Waking the bots")
                 bots_asleep = False
                 print(

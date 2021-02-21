@@ -7,7 +7,7 @@ from Code.SeleniumDocker import SeleniumDocker
 from Code.ProxyDocker import ProxyDocker
 from datetime import datetime
 import Code.Utilities as Util
-import shutil
+import traceback
 
 
 class Swarm:
@@ -419,7 +419,7 @@ class Swarm:
         if mode == 'w':
             self.log['time'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             with open(self.path_log, 'w') as log_file:
-                json.dump(self.log, log_file)
+                json.dump(self.log, log_file, indent='  ')
             del log_file
 
     def launch_proxy(self):
@@ -466,7 +466,7 @@ class Swarm:
                 profile = random.choice(profiles)
                 self.log['profile'][bot_id] = profile
             instance = SingleBot(self.port,
-                                 'dem',
+                                 self.flag,
                                  bot_id=bot_id,
                                  swarm_name=self.swarm_name,
                                  path_results=self.path_results,
@@ -484,7 +484,8 @@ class Swarm:
 
     def time_handler(self, t_elapsed, start_up=False):
         office_hour = True
-        if 3 > Util.get_time(self.timezone) or 22 < Util.get_time(self.timezone)  :
+        if 3 > Util.get_time(self.timezone) or 22 < Util.get_time(
+                self.timezone):
             office_hour = False
         while not self._night_search and 3 < Util.get_time(self.timezone) < 7:
             time.sleep(300)
@@ -542,12 +543,33 @@ class Swarm:
                 try:
                     issue = bot.search(term, store)
                 except:
-                    issue = self.retry_search(bot, term, store)
-
+                    print(traceback.format_exc())
+                    try:
+                        time.sleep(15 * 60 + 1)
+                        issue = self.retry_search(bot, term, store)
+                    except:
+                        issue = 'hard crash'
+                        print(traceback.format_exc())
+            if issue == 'scroll failure':
+                self._restart_docker(bot)
+                issue = None
             if issue is not None:
                 print(f'{bot_id} encountered {issue} attempting auto restart')
-                issue = self.retry_search(bot, term, store)
-            profile_path = bot.shutdown()
+                time.sleep(15 * 60 + 1)
+                try:
+                    issue = self.retry_search(bot, term, store)
+                except:
+                    issue = 'hard crash'
+                    print(traceback.format_exc())
+            if issue is None:
+                profile_path = bot.shutdown()
+            elif issue == 'scroll failure':
+                self._restart_docker(bot)
+            else:
+                try:
+                    profile_path = bot.shutdown()
+                except:
+                    profile_path = self.log['profile_path'][bot_id]
             self.log['profile_path'][bot_id] = profile_path
             success = issue is None
             if success:
@@ -568,7 +590,6 @@ class Swarm:
         office_hours = self.time_handler(0, start_up=True)
         completed = True
         while office_hours and self.nr_searches_creation > 0:
-            self.log['nr_create'] = self.log['nr_create'] + 1
 
             source = random.choices(['political', 'benign'], [0.8, 0.2], k=1)
             file_source = {'political': self.create_terms,
@@ -581,11 +602,11 @@ class Swarm:
                     f'Creation searches could no longer be conducted {self.swarm_name}')
                 break
             self.nr_searches_creation -= 1
+            self.log['nr_create'] = self.log['nr_create'] + 1
             self.handle_log('w')
             office_hours = self.time_handler(time_elapsed)
 
         while not creation_only and office_hours and self.nr_searches_exp > 0 and completed:
-            self.log['nr_exp'] = self.log['nr_exp'] + 1
             terms = [self.exp_terms[self.exp_progress]] * self.nr_inst
             time_elapsed, completed = self.search(terms, store=True)
             if not completed:
@@ -594,10 +615,13 @@ class Swarm:
             self.nr_searches_exp -= 1
             self.exp_progress += 1
             self.log['exp_progress'] = self.exp_progress
-            office_hours = self.time_handler(time_elapsed)
+            self.log['nr_exp'] = self.log['nr_exp'] + 1
             self.handle_log('w')
+            office_hours = self.time_handler(time_elapsed)
+        self.exp_progress = 0
 
-    def retry_search(self, bot, term, store):
+
+    def _restart_docker(self, bot):
         try:
             bot.shutdown()
         except:
@@ -610,6 +634,7 @@ class Swarm:
                             self.proxy['password'],
                             self.proxy['port'])
 
+        time.sleep(2)
         container = SeleniumDocker(self.port,
                                    f'container_{self.swarm_name}',
                                    self.timezone,
@@ -618,6 +643,9 @@ class Swarm:
                                        self._profile_dir["Selenium"]],
                                    )
         time.sleep(5)
+
+    def retry_search(self, bot, term, store):
+        self._restart_docker(bot)
         bot.launch()
         issue = bot.search(term, store)
         return issue

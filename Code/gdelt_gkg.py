@@ -95,7 +95,7 @@ def method_org(name, dict_name, nr_first, freq_lim=10):
     return terms
 
 
-def load_gkg(hours=12, country='US'):
+def load_gkg(hours=24, country='US'):
     country_media_path = IN_COUNTRY_MEDIA[0] + country + IN_COUNTRY_MEDIA[1]
     if not os.path.exists(country_media_path):
         get_country_media(country)

@@ -12,8 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 import re
-
-from pytz import reference
+import traceback
 
 TITLE_LOC = {'Breitbart': 0, 'Slate': 0, 'AlterNet': 0, 'TheBlaze': 0}
 
@@ -229,7 +228,10 @@ def connection_handler(driver, url, wait=30, max_tries=3):
     except sel_exc.TimeoutException:
         issue = 'timeout'
     except sel_exc.WebDriverException:
+        print(traceback.format_exc())
+        print(exec)
         issue = 'webdriver'
+
     except:
         issue = 'Unknown hard crash'
     return issue
@@ -253,7 +255,11 @@ def click_search(driver, interface):
         e_search_button = driver.find_elements_by_xpath(
             '/html/body/div/div[2]/form/div[2]/div[1]/div[3]/center/input[1]')
         if len(e_nr_res) != 0:
-            nr_results = int(re.search('\\b[0-9]+', e_nr_res[0].text).group(0))
+            nr_results_attempt = re.search('\\b[0-9]+', e_nr_res[0].text)
+            if nr_results_attempt is not None:
+                nr_results = int(nr_results_attempt.group(0))
+            else:
+                print(e_nr_res[0].text)
         elif len(e_no_res) != 0:
             nr_results = 0
         elif len(e_search_button) != 0:
@@ -298,10 +304,29 @@ def click_search(driver, interface):
             return f'there are results, but they wont load or have different class name', nr_results
 
         return issue, nr_results
+    elif nr_results == 0:
+        return None, nr_results
     else:
-        WebDriverWait(driver, 10).until(
+        try:
+            WebDriverWait(driver, 10).until(
                 ec.presence_of_element_located(
                     (By.CLASS_NAME, 'rc')))
-        issue = None
-        nr_results = 1
+            issue = None
+            nr_results = 1
+        except:
+            try:
+                interface.move_and_click(
+                    "/html/body/div/div[2]/form/div[2]/div[1]/div[3]/center/input[1]")
+            except:
+                issue = f'There don\'t seem to be any results Captcha?!'
+                driver.get_screenshot_as_file(
+                    f'Data/log_files/swarms/crash.png')
+            try:
+                e = WebDriverWait(driver, 20).until(
+                    ec.presence_of_element_located((By.CLASS_NAME, 'WE0UJf')))
+                nr_results = int(re.search('\\b[0-9]+', e.text).group(0))
+            except:
+                issue = f'There don\'t seem to be any results Captcha?!'
+                driver.get_screenshot_as_file(
+                    f'Data/log_files/swarms/crash.png')
         return issue, nr_results

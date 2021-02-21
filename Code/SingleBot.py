@@ -14,6 +14,7 @@ from selenium.common import exceptions
 from datetime import datetime
 import re
 import shutil
+import traceback
 
 
 class SingleBot:
@@ -202,16 +203,16 @@ class SingleBot:
         return self._driver
 
     @driver.setter
-    def driver(self, driver):
-        self._driver = driver
+    def driver(self, val):
+        self._driver = val
 
     @property
     def interface(self):
         return self._interface
 
     @interface.setter
-    def interface(self, interface):
-        self._interface = interface
+    def interface(self, val):
+        self._interface = val
 
     def store_search(self, term_params, selected):
         if term_params['type'] == 'political':
@@ -318,7 +319,9 @@ class SingleBot:
             self.interface = BI.BotInterface(self.driver)
         except:
             issue = 'failed_interface_connection'
-        self.interface.set_cursor_loc()
+        try: self.interface.set_cursor_loc()
+        except:
+            issue = 'failed_set_cursor'
         return issue
 
     def match_domain(self, target_domain, class_name='rc'):
@@ -345,7 +348,7 @@ class SingleBot:
         """
         :param rank: int rank across pages of first result on current page
         :param target_rank: int, rank of desired choices
-        :param class_name: class name for text field to be stored
+        :param  class_name: class name for text field to be stored
         :return: matched element
 
         expects driver to have accessed google and searched term_params.
@@ -366,15 +369,25 @@ class SingleBot:
         except:
             return False
         self.interface.scroll_to_bottom()
-        next_button = self.driver.find_element_by_xpath('//*[@id="pnnext"]')
+        next_button_find = self.driver.find_elements_by_xpath(
+            '//*[@id="pnnext"]')
+        if len(next_button_find) == 0:
+            return False
+        else:
+            next_button = next_button_find[0]
         where = next_button.rect
         where['y'] -= self.interface.y_scroll_loc
         x_dev = random.randint(1, max(int(where['width'] - 1), 1))
         y_dev = random.randint(1, max(int(where['height'] - 1), 1))
         x_loc = int(where['x']) + x_dev
         y_loc = int(where['y']) + y_dev
-        self.interface.mouse_to(x_loc, y_loc)
-        self.interface.safe_click(next_button, x_dev, y_dev)
+        try:
+            self.interface.mouse_to(x_loc, y_loc)
+            self.interface.safe_click(next_button, x_dev, y_dev)
+        except exceptions.MoveTargetOutOfBoundsException:
+            self.interface.sctoll_to_bottom()
+            self.interface.mouse_to(x_loc, y_loc)
+            self.interface.safe_click(next_button, x_dev, y_dev)
         time.sleep(3)
         try:
             WebDriverWait(self.driver, 180).until(
@@ -414,12 +427,23 @@ class SingleBot:
             else:
                 break
         if result is not None:
-            try:
-                button = result.find_element_by_class_name('LC20lb.DKV0Md')
-            except:
+
+            button_list = result.find_elements_by_class_name('LC20lb')
+            if len(button_list) == 0:
                 try:
                     self.interface.scroll_to_bottom()
-                    button = result.find_element_by_class_name('LC20lb.DKV0Md')
+                    button_list += result.find_elements_by_class_name(
+                        'LC20lb.DKV0Md')
+                    button_list += result.find_elements_by_class_name(
+                        '"LC20lb.MMgsKf')
+                    if len(button_list) == 0:
+                        print('values dont exist')
+                        print(result.get_attribute('innerHTML'))
+                        img = self.driver.get_screenshot_as_file(
+                            f'Data/log_files/swarms/img{self.bot_id}.png')
+                        print(self.bot_id)
+
+                        return 'failure'
                 except:
                     print('values dont exist')
                     print(result.get_attribute('innerHTML'))
@@ -428,6 +452,7 @@ class SingleBot:
                     print(self.bot_id)
 
                     return 'failure'
+            button = button_list[0]
             where = button.rect
             if choice_type == 'domain':
                 self.interface.scroll_to_top(fast=True)
@@ -447,7 +472,7 @@ class SingleBot:
             self.interface.safe_click(button, x_dev, y_dev)
             self.interface.y_scroll_loc = self.driver.execute_script(
                 'return window.pageYOffset;')
-            time.sleep(10)
+            time.sleep(15)
             try:
                 self.interface.scroll_to_bottom(slow=True, limit=3500)
             except:
@@ -457,7 +482,7 @@ class SingleBot:
                     f'Data/log_files/swarms/img{self.bot_id}.png')
                 print(term_params)
                 print(self.driver.current_url)
-                return 'failure'
+                return 'sucess/restart'
             return 'success'
         else:
             return 'failure'
@@ -481,9 +506,8 @@ class SingleBot:
                     f'{self._profile_dir["Host"]}/{self.bot_id}/cookies.sqlite'):
                 os.system(
                     f'docker exec container_{self._swarm_name} rm -r {self._profile_dir["Selenium"]}/{self.bot_id}')
-
             os.system(
-                f'docker exec container_{self._swarm_name} cp --remove-destination -a {path} {self._profile_dir["Selenium"]}/{self.bot_id}')
+                f'docker exec container_{self._swarm_name} sudo cp --remove-destination -a {path} {self._profile_dir["Selenium"]}/{self.bot_id} 2>/dev/null')
 
             self.driver.quit()
             if os.path.lexists(
@@ -500,6 +524,7 @@ class SingleBot:
                 time.sleep(2)
                 self.driver.quit()
             else:
+
                 shutil.copytree(path,
                                 f'{self._profile_dir["Host"]}/interim_{self.bot_id}')
                 time.sleep(2)
@@ -567,10 +592,14 @@ class SingleBot:
         :return: boolean, True if search executed successfully
         """
 
+        # self.driver.get('https://browserleaks.com/proxy')
+        # e = self.driver.find_element_by_xpath('//*[@id="headers"]')
+        # self.interface.scroll(e.location['y'])
+        # self.driver.get_screenshot_as_file('/Users/johannes/Desktop/Screenshot.png')
         # if results are not stored, search terms are cut short randomly
         # This could be moved to the function calling this, doesnt really make
         # sense here as this function is meant to search, not create search terms.
-
+        term_params = {'term': 'alternet', "choice_type": "domain", "choice_param": "occupydemocrats.com", "type": "political"}
         if not store:
             words = term_params['term'].split(' ')
             if len(words) > 6:
@@ -638,7 +667,21 @@ class SingleBot:
                 selected = 'No Results'
             elif term_params['choice_type'] != 'none':
                 time.sleep(d2 := r.uniform(1.5, 2.5))
-                selected = self.select_result(term_params)
+                try:
+                    selected = self.select_result(term_params)
+                    if '/' in selected:
+                        if save_search:
+                            self.store_search(term_params, 'sucess')
+                        issue = 'scroll failure'
+                        return issue
+                except:
+                    print(traceback.format_exc())
+                    issue = 'the issue is in exception'
+                    print(issue)
+                    selected = 'failure'
+                    if save_search:
+                        self.store_search(term_params, selected)
+                    return issue
             else:
                 selected = 'None'
             time.sleep(random.uniform(5, 10))
